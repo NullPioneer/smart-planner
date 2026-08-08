@@ -381,8 +381,34 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       case 'pin':
         await repo.setPinned(task.id, pinned: !task.isPinned);
       case 'delete':
+        final shouldDelete = await _confirmMoveToTrash(task);
+        if (!shouldDelete) return;
         await repo.moveToTrash(task.id);
-        await ref.read(taskNotificationCoordinatorProvider).cancelTask(task.id);
+        if (!ref.read(isTestEnvironmentProvider)) {
+          await ref
+              .read(taskNotificationCoordinatorProvider)
+              .cancelTask(task.id);
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text('“${task.title}” moved to Trash.'),
+                action: SnackBarAction(
+                  label: 'Undo',
+                  onPressed: () async {
+                    await repo.restoreFromTrash(task.id);
+                    if (!ref.read(isTestEnvironmentProvider)) {
+                      await ref
+                          .read(taskNotificationCoordinatorProvider)
+                          .syncTask(task.id);
+                    }
+                  },
+                ),
+              ),
+            );
+        }
       case 'edit':
         _openDetails(task.id);
     }
@@ -394,6 +420,31 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   Future<void> _openDetails(String id) async => Navigator.of(context).push(
     MaterialPageRoute<void>(builder: (_) => TaskDetailsScreen(taskId: id)),
   );
+
+  Future<bool> _confirmMoveToTrash(PlannerTask task) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Move reminder to Trash?'),
+          content: Text(
+            '“${task.title}” will be moved to Trash. You can restore it '
+            'for up to 30 days.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Move to Trash'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
   String _label(String value) {
     final spaced = value.replaceAllMapped(
       RegExp(r'([A-Z])'),

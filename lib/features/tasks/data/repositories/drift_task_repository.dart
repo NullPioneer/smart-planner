@@ -315,6 +315,22 @@ final class DriftTaskRepository implements TaskRepository {
   }
 
   @override
+  Future<int> moveCompletedBeforeToTrash(DateTime cutoff) async {
+    final rows =
+        await (_database.select(_database.tasks)..where(
+              (task) =>
+                  task.deletedAt.isNull() &
+                  task.completedAt.isNotNull() &
+                  task.completedAt.isSmallerThanValue(cutoff),
+            ))
+            .get();
+    for (final task in rows) {
+      await moveToTrash(task.id);
+    }
+    return rows.length;
+  }
+
+  @override
   Future<void> setChecklistItemChecked(String id, {required bool checked}) {
     return (_database.update(_database.checklistItems)
           ..where((item) => item.id.equals(id)))

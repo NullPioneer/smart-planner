@@ -8,6 +8,7 @@ import 'package:smart_reminder/features/settings/application/app_settings_contro
 import 'package:smart_reminder/features/tasks/domain/models/planner_task.dart';
 import 'package:smart_reminder/features/tasks/presentation/attachment_capture_flow.dart';
 import 'package:smart_reminder/shared/widgets/glass_panel.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AddTaskScreen extends ConsumerStatefulWidget {
   const AddTaskScreen({super.key, this.initialDate, this.existing});
@@ -406,181 +407,220 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
               ),
             ]),
             const SizedBox(height: 10),
-            _panel('Reminder timings', Icons.notifications_active_outlined, [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final minutes in _reminderOptions)
-                    FilterChip(
-                      label: Text(_reminderLabel(minutes)),
-                      selected: _reminders.contains(minutes),
-                      onSelected: (selected) => setState(
-                        () => selected
-                            ? _reminders.add(minutes)
-                            : _reminders.remove(minutes),
-                      ),
-                    ),
-                  ActionChip(
-                    avatar: const Icon(Icons.add, size: 17),
-                    label: const Text('Custom'),
-                    onPressed: _customReminder,
-                  ),
-                ],
-              ),
-              if (_reminders.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    'No notification will be scheduled.',
-                    style: TextStyle(color: AppColors.error),
-                  ),
+            GlassPanel(
+              padding: EdgeInsets.zero,
+              child: ExpansionTile(
+                key: const Key('task-more-options'),
+                maintainState: true,
+                leading: const Icon(Icons.tune_rounded),
+                title: const Text('More options'),
+                subtitle: const Text(
+                  'Reminders, checklist, contacts, files, voice and notes',
                 ),
-            ]),
-            const SizedBox(height: 10),
-            _panel('Checklist', Icons.checklist, [
-              for (var i = 0; i < _checklist.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _checklist[i],
-                          decoration: InputDecoration(
-                            labelText: 'Item ${i + 1}',
+                childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                children: [
+                  _panel(
+                    'Reminder timings',
+                    Icons.notifications_active_outlined,
+                    [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final minutes in _reminderOptions)
+                            FilterChip(
+                              label: Text(_reminderLabel(minutes)),
+                              selected: _reminders.contains(minutes),
+                              onSelected: (selected) => setState(
+                                () => selected
+                                    ? _reminders.add(minutes)
+                                    : _reminders.remove(minutes),
+                              ),
+                            ),
+                          ActionChip(
+                            avatar: const Icon(Icons.add, size: 17),
+                            label: const Text('Custom'),
+                            onPressed: _customReminder,
+                          ),
+                        ],
+                      ),
+                      if (_reminders.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text(
+                            'No notification will be scheduled.',
+                            style: TextStyle(color: AppColors.error),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          final c = _checklist.removeAt(i);
-                          c.dispose();
-                          setState(() {});
-                        },
-                        icon: const Icon(Icons.remove_circle_outline),
-                      ),
                     ],
                   ),
-                ),
-              OutlinedButton.icon(
-                onPressed: () =>
-                    setState(() => _checklist.add(_checklistController())),
-                icon: const Icon(Icons.add),
-                label: const Text('Add checklist item'),
-              ),
-            ]),
-            const SizedBox(height: 10),
-            if (_medicineSafetyEnabled) ...[
-              _panel('Medicine safety', Icons.health_and_safety_outlined, [
-                const Text(
-                  'Add optional contacts for quick access. Smart Planner never calls or emails anyone automatically.',
-                ),
-                const SizedBox(height: 12),
-                for (var i = 0; i < _emergencyContacts.length; i++) ...[
-                  TextFormField(
-                    key: Key('emergency-contact-${i + 1}'),
-                    controller: _emergencyContacts[i],
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      labelText: 'Emergency contact ${i + 1}',
-                      prefixIcon: const Icon(Icons.phone_outlined),
+                  const SizedBox(height: 10),
+                  _panel('Checklist', Icons.checklist, [
+                    for (var i = 0; i < _checklist.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _checklist[i],
+                                decoration: InputDecoration(
+                                  labelText: 'Item ${i + 1}',
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Delete checklist item',
+                              onPressed: () => _confirmDeleteChecklistItem(i),
+                              icon: const Icon(Icons.remove_circle_outline),
+                            ),
+                          ],
+                        ),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () => setState(
+                        () => _checklist.add(_checklistController()),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add checklist item'),
                     ),
-                  ),
-                  if (i < _emergencyContacts.length - 1)
+                  ]),
+                  const SizedBox(height: 10),
+                  if (_medicineSafetyEnabled) ...[
+                    _panel('Medicine safety', Icons.health_and_safety_outlined, [
+                      const Text(
+                        'Add optional contacts for quick access. Smart Planner never calls or emails anyone automatically.',
+                      ),
+                      const SizedBox(height: 12),
+                      for (var i = 0; i < _emergencyContacts.length; i++) ...[
+                        TextFormField(
+                          key: Key('emergency-contact-${i + 1}'),
+                          controller: _emergencyContacts[i],
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Emergency contact ${i + 1}',
+                            prefixIcon: const Icon(
+                              Icons.person_outline_rounded,
+                            ),
+                            suffixIcon: IconButton(
+                              key: Key('call-emergency-contact-${i + 1}'),
+                              tooltip: 'Call emergency contact ${i + 1}',
+                              onPressed:
+                                  _emergencyContacts[i].text.trim().isEmpty
+                                  ? null
+                                  : () => _dialEmergencyContact(
+                                      _emergencyContacts[i].text.trim(),
+                                    ),
+                              icon: const Icon(Icons.phone_in_talk_rounded),
+                            ),
+                          ),
+                        ),
+                        if (i < _emergencyContacts.length - 1)
+                          const SizedBox(height: 10),
+                      ],
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        key: const Key('emergency-email'),
+                        controller: _emergencyEmail,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'Emergency email',
+                          prefixIcon: const Icon(Icons.alternate_email_rounded),
+                          suffixIcon: IconButton(
+                            key: const Key('email-emergency-contact'),
+                            tooltip: 'Email emergency contact',
+                            onPressed: _isValidEmergencyEmail
+                                ? _composeEmergencyEmail
+                                : null,
+                            icon: const Icon(Icons.send_rounded),
+                          ),
+                        ),
+                        validator: (value) {
+                          final email = value?.trim() ?? '';
+                          if (email.isNotEmpty &&
+                              !RegExp(
+                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                              ).hasMatch(email)) {
+                            return 'Enter a valid email address';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'In Notes, add only medicine, dosage, and prescription instructions verified with a healthcare professional. For an emergency, contact local emergency services.',
+                        style: TextStyle(color: AppColors.onSurfaceVariant),
+                      ),
+                    ]),
                     const SizedBox(height: 10),
-                ],
-                const SizedBox(height: 10),
-                TextFormField(
-                  key: const Key('emergency-email'),
-                  controller: _emergencyEmail,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Emergency email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                  validator: (value) {
-                    final email = value?.trim() ?? '';
-                    if (email.isNotEmpty &&
-                        !RegExp(
-                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                        ).hasMatch(email)) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'In Notes, add only medicine, dosage, and prescription instructions verified with a healthcare professional. For an emergency, contact local emergency services.',
-                  style: TextStyle(color: AppColors.onSurfaceVariant),
-                ),
-              ]),
-              const SizedBox(height: 10),
-            ],
-            _panel('Attachments & voice', Icons.attach_file, [
-              for (final item in _pendingAttachments)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: item.type == TaskAttachmentType.image
-                      ? const Icon(Icons.image)
-                      : const Icon(Icons.insert_drive_file),
-                  title: Text(item.name),
-                  trailing: IconButton(
-                    tooltip: 'Delete attachment',
-                    onPressed: () => _confirmDeletePendingAttachment(item),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-              if (_pendingVoice != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.mic),
-                  title: Text('Voice note • ${_pendingVoice!.$2}s'),
-                  trailing: IconButton(
-                    tooltip: 'Delete voice note',
-                    onPressed: _confirmDeletePendingVoice,
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-              Wrap(
-                spacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _captureImages,
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Camera'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Gallery / document'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _pickFile,
-                    icon: const Icon(Icons.description_outlined),
-                    label: const Text('PDF/Word'),
-                  ),
-                  FilledButton.tonalIcon(
-                    onPressed: _toggleRecording,
-                    icon: Icon(_recording ? Icons.stop : Icons.mic),
-                    label: Text(_recording ? 'Stop' : 'Record'),
-                  ),
+                  ],
+                  _panel('Attachments & voice', Icons.attach_file, [
+                    for (final item in _pendingAttachments)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: item.type == TaskAttachmentType.image
+                            ? const Icon(Icons.image)
+                            : const Icon(Icons.insert_drive_file),
+                        title: Text(item.name),
+                        trailing: IconButton(
+                          tooltip: 'Delete attachment',
+                          onPressed: () =>
+                              _confirmDeletePendingAttachment(item),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                    if (_pendingVoice != null)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.mic),
+                        title: Text('Voice note • ${_pendingVoice!.$2}s'),
+                        trailing: IconButton(
+                          tooltip: 'Delete voice note',
+                          onPressed: _confirmDeletePendingVoice,
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _captureImages,
+                          icon: const Icon(Icons.camera_alt_outlined),
+                          label: const Text('Camera'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _pickImage,
+                          icon: const Icon(Icons.photo_library_outlined),
+                          label: const Text('Gallery / document'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _pickFile,
+                          icon: const Icon(Icons.description_outlined),
+                          label: const Text('PDF/Word'),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: _toggleRecording,
+                          icon: Icon(_recording ? Icons.stop : Icons.mic),
+                          label: Text(_recording ? 'Stop' : 'Record'),
+                        ),
+                      ],
+                    ),
+                  ]),
+                  const SizedBox(height: 10),
+                  _panel('Notes', Icons.notes, [
+                    TextFormField(
+                      controller: _notes,
+                      minLines: 4,
+                      maxLines: 12,
+                      decoration: const InputDecoration(
+                        hintText: 'Unlimited notes…',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ]),
                 ],
               ),
-            ]),
-            const SizedBox(height: 10),
-            _panel('Notes', Icons.notes, [
-              TextFormField(
-                controller: _notes,
-                minLines: 4,
-                maxLines: 12,
-                decoration: const InputDecoration(
-                  hintText: 'Unlimited notes…',
-                  alignLabelWithHint: true,
-                ),
-              ),
-            ]),
+            ),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -895,6 +935,80 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
         }
       }
     }
+  }
+
+  bool get _isValidEmergencyEmail => RegExp(
+    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+  ).hasMatch(_emergencyEmail.text.trim());
+
+  Future<void> _dialEmergencyContact(String number) async {
+    final opened = await launchUrl(
+      Uri(scheme: 'tel', path: number),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No phone app could open this number.')),
+      );
+    }
+  }
+
+  Future<void> _composeEmergencyEmail() async {
+    final title = _title.text.trim().isEmpty
+        ? 'Medicine reminder'
+        : _title.text.trim();
+    final notes = _notes.text.trim();
+    final query =
+        <String, String>{
+              'subject': 'Medicine information - $title',
+              if (notes.isNotEmpty) 'body': notes,
+            }.entries
+            .map((entry) {
+              return '${Uri.encodeComponent(entry.key)}='
+                  '${Uri.encodeComponent(entry.value)}';
+            })
+            .join('&');
+    final opened = await launchUrl(
+      Uri(scheme: 'mailto', path: _emergencyEmail.text.trim(), query: query),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No email app could create this message.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteChecklistItem(int index) async {
+    final item = _checklist[index].text.trim();
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete checklist item?'),
+        content: Text(
+          item.isEmpty
+              ? 'This checklist item will be removed.'
+              : '“$item” will be removed from this reminder.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !mounted || index >= _checklist.length) return;
+    final controller = _checklist.removeAt(index);
+    controller.dispose();
+    setState(() {});
   }
 
   Future<void> _confirmDeletePendingVoice() async {

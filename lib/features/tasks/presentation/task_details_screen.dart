@@ -147,26 +147,26 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
             for (final number in task.emergencyContactNumbers)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.phone_outlined),
+                leading: const Icon(Icons.person_outline_rounded),
                 title: Text(number),
                 subtitle: const Text('Opens the phone dialler'),
                 trailing: FilledButton.tonalIcon(
                   onPressed: () => _dialEmergencyContact(number),
-                  icon: const Icon(Icons.call_outlined),
+                  icon: const Icon(Icons.phone_in_talk_rounded),
                   label: const Text('Call'),
                 ),
               ),
             if (task.emergencyEmail.isNotEmpty)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.email_outlined),
+                leading: const Icon(Icons.alternate_email_rounded),
                 title: Text(task.emergencyEmail),
                 subtitle: const Text(
                   'Opens a pre-filled email for you to review',
                 ),
                 trailing: FilledButton.tonalIcon(
                   onPressed: () => _composeMedicineEmail(task),
-                  icon: const Icon(Icons.send_outlined),
+                  icon: const Icon(Icons.send_rounded),
                   label: const Text('Email'),
                 ),
               ),
@@ -505,7 +505,7 @@ Please verify this information with the prescribing healthcare professional.''';
         ],
       ),
     );
-    if (shouldDelete != true) return;
+    if (shouldDelete != true || !mounted) return;
     await ref.read(taskRepositoryProvider).removeAttachment(item.id);
     await ref.read(localMediaServiceProvider).deleteIfOwned(item.path);
     await _refresh();
@@ -753,11 +753,56 @@ Please verify this information with the prescribing healthcare professional.''';
   }
 
   Future<void> _delete() async {
-    await ref.read(taskRepositoryProvider).moveToTrash(widget.taskId);
+    final details = ref.read(taskDetailsProvider(widget.taskId)).value;
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Move reminder to Trash?'),
+        content: Text(
+          details == null
+              ? 'This reminder will be moved to Trash.'
+              : '“${details.task.title}” will be moved to Trash. You can '
+                    'restore it for up to 30 days.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Move to Trash'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !mounted) return;
+    final repository = ref.read(taskRepositoryProvider);
+    final notifications = ref.read(taskNotificationCoordinatorProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final taskTitle = details?.task.title ?? 'Reminder';
+    await repository.moveToTrash(widget.taskId);
     await ref
         .read(taskNotificationCoordinatorProvider)
         .cancelTask(widget.taskId);
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('“$taskTitle” moved to Trash.'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                await repository.restoreFromTrash(widget.taskId);
+                await notifications.syncTask(widget.taskId);
+              },
+            ),
+          ),
+        );
+    }
   }
 
   Future<void> _toggleCompleted(PlannerTask task) async {

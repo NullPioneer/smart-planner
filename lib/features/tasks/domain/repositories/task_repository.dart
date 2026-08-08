@@ -13,6 +13,7 @@ abstract interface class TaskRepository {
   Future<void> moveToTrash(String id);
   Future<void> restoreFromTrash(String id);
   Future<void> permanentlyDelete(String id);
+  Future<int> moveCompletedBeforeToTrash(DateTime cutoff);
   Future<void> setChecklistItemChecked(String id, {required bool checked});
   Future<String> addCategory({
     required String name,

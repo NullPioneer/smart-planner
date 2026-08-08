@@ -56,6 +56,13 @@ void main() {
     );
     await tester.tap(find.text('High'));
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -800));
+    await tester.pumpAndSettle();
+    final moreOptions = find.byKey(const Key('task-more-options'));
+    await tester.ensureVisible(moreOptions);
+    await tester.pumpAndSettle();
+    await tester.tap(moreOptions);
+    await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView).first, const Offset(0, -1700));
     await tester.pumpAndSettle();
 
@@ -63,7 +70,53 @@ void main() {
     expect(find.byKey(const Key('emergency-contact-2')), findsOneWidget);
     expect(find.byKey(const Key('emergency-contact-3')), findsOneWidget);
     expect(find.byKey(const Key('emergency-email')), findsOneWidget);
+    final callButton = find.byKey(const Key('call-emergency-contact-1'));
+    final emailButton = find.byKey(const Key('email-emergency-contact'));
+    expect(tester.widget<IconButton>(callButton).onPressed, isNull);
+    expect(tester.widget<IconButton>(emailButton).onPressed, isNull);
+
+    await tester.enterText(
+      find.byKey(const Key('emergency-contact-1')),
+      '1111111111',
+    );
+    await tester.enterText(
+      find.byKey(const Key('emergency-email')),
+      'trusted@example.com',
+    );
+    await tester.pump();
+    expect(tester.widget<IconButton>(callButton).onPressed, isNotNull);
+    expect(tester.widget<IconButton>(emailButton).onPressed, isNotNull);
     expect(find.textContaining('never calls or emails'), findsOneWidget);
+  });
+
+  testWidgets('deleting a checklist item asks for confirmation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: AddTaskScreen())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -800));
+    await tester.pumpAndSettle();
+    final moreOptions = find.byKey(const Key('task-more-options'));
+    await tester.ensureVisible(moreOptions);
+    await tester.pumpAndSettle();
+    await tester.tap(moreOptions);
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1300));
+    await tester.pumpAndSettle();
+    final addItem = find.text('Add checklist item');
+    await tester.ensureVisible(addItem);
+    await tester.pumpAndSettle();
+    await tester.tap(addItem);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Delete checklist item'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete checklist item?'), findsOneWidget);
+    expect(find.text('Cancel'), findsWidgets);
+    expect(find.text('Delete'), findsOneWidget);
   });
 
   testWidgets(
@@ -107,6 +160,10 @@ void main() {
       expect(find.text('Medicine safety'), findsOneWidget);
       expect(find.text('Call'), findsOneWidget);
       expect(find.text('Email'), findsOneWidget);
+      expect(find.byIcon(Icons.person_outline_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.phone_in_talk_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.alternate_email_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.send_rounded), findsOneWidget);
       expect(find.textContaining('never calls or emails'), findsOneWidget);
     },
   );
@@ -239,5 +296,39 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Cancel'), findsOneWidget);
+  });
+
+  testWidgets('deleting a reminder asks before moving it to Trash', (
+    tester,
+  ) async {
+    final details = TaskDetails(
+      task: task(),
+      checklist: const [],
+      attachments: const [],
+      voiceNotes: const [],
+      reminders: const [],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taskDetailsProvider.overrideWith((ref, id) async => details),
+        ],
+        child: const MaterialApp(home: TaskDetailsScreen(taskId: 'safe-edit')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -2000));
+    await tester.pumpAndSettle();
+    final deleteButton = find.widgetWithText(TextButton, 'Delete');
+    await tester.ensureVisible(deleteButton);
+    await tester.pumpAndSettle();
+    await tester.tap(deleteButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Move reminder to Trash?'), findsOneWidget);
+    expect(find.textContaining('restore it for up to 30 days'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Move to Trash'), findsOneWidget);
   });
 }

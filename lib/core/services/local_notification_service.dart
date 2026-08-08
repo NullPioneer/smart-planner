@@ -21,6 +21,17 @@ final class ReminderNotificationAction {
   final bool isAlarm;
 }
 
+final class NotificationHealth {
+  const NotificationHealth({
+    required this.notificationsEnabled,
+    required this.exactAlarmsEnabled,
+  });
+
+  final bool notificationsEnabled;
+  final bool exactAlarmsEnabled;
+  bool get isHealthy => notificationsEnabled && exactAlarmsEnabled;
+}
+
 /// Android notification gateway used by reminder application services.
 final class LocalNotificationService {
   LocalNotificationService({
@@ -98,6 +109,44 @@ final class LocalNotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     return await android?.requestNotificationsPermission() ?? true;
+  }
+
+  Future<NotificationHealth> checkHealth() async {
+    try {
+      await initialize();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android == null) {
+        return const NotificationHealth(
+          notificationsEnabled: true,
+          exactAlarmsEnabled: true,
+        );
+      }
+      return NotificationHealth(
+        notificationsEnabled: await android.areNotificationsEnabled() ?? true,
+        exactAlarmsEnabled:
+            await android.canScheduleExactNotifications() ?? true,
+      );
+    } catch (_) {
+      return const NotificationHealth(
+        notificationsEnabled: true,
+        exactAlarmsEnabled: true,
+      );
+    }
+  }
+
+  Future<NotificationHealth> requestMissingHealthPermissions() async {
+    await requestPermission();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    try {
+      await android?.requestExactAlarmsPermission();
+    } catch (_) {}
+    return checkHealth();
   }
 
   Future<bool> showReminder({

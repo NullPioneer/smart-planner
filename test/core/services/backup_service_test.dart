@@ -33,4 +33,33 @@ void main() {
     expect(report, isNot(contains('END_SMART_PLANNER_RESTORE_DATA')));
     expect(report.trimLeft(), isNot(startsWith('{')));
   });
+
+  test('encrypted copy hides its contents and requires the password', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftTaskRepository(database);
+    await repository.saveTask(
+      TaskDraft(
+        title: 'Private medicine plan',
+        dueAt: DateTime(2026, 8, 8, 10),
+      ),
+    );
+    final service = BackupService(database);
+
+    final encrypted = await service.encryptReadableBackup('strong-passphrase');
+    expect(
+      String.fromCharCodes(encrypted),
+      isNot(contains('Private medicine plan')),
+    );
+
+    final unlocked = await service.decryptEncryptedBackup(
+      encrypted,
+      'strong-passphrase',
+    );
+    expect(unlocked, contains('Private medicine plan'));
+    expect(
+      () => service.decryptEncryptedBackup(encrypted, 'wrong-password'),
+      throwsA(isA<FormatException>()),
+    );
+  });
 }

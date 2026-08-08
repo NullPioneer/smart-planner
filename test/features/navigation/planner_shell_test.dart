@@ -138,6 +138,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Visible task card'), findsOneWidget);
+    await tester.tap(find.byTooltip('Task actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Move to trash'));
+    await tester.pumpAndSettle();
+    expect(find.text('Move reminder to Trash?'), findsOneWidget);
+    expect(find.text('Move to Trash'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    await tester.tap(find.text('Move to Trash'));
+    await tester.pumpAndSettle();
+    expect(find.text('Undo'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

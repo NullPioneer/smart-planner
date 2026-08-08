@@ -19,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedSound = ref.watch(notificationSoundControllerProvider);
     final appSettings = ref.watch(appSettingsControllerProvider).value;
+    final notificationHealth = ref.watch(notificationHealthProvider);
 
     return SingleChildScrollView(
       padding: compact
@@ -72,6 +73,21 @@ class SettingsScreen extends ConsumerWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
+                    _SettingsTile(
+                      key: const Key('notification-health-setting'),
+                      icon: notificationHealth.value?.isHealthy == false
+                          ? Icons.warning_amber_rounded
+                          : Icons.verified_outlined,
+                      title: 'Notification health',
+                      subtitle: notificationHealth.when(
+                        data: (health) => health.isHealthy
+                            ? 'Ready for reminders and alarms'
+                            : 'Permission needs attention',
+                        loading: () => 'Checking permissions…',
+                        error: (_, _) => 'Tap to check permissions',
+                      ),
+                      onTap: () => _showNotificationHealth(context, ref),
+                    ),
                     selectedSound.when(
                       data: (sound) => _SettingsTile(
                         key: const Key('notification-sound-setting'),
@@ -137,9 +153,11 @@ class SettingsScreen extends ConsumerWidget {
                         'device encryption while your phone is locked. The local '
                         'planner database is not separately password-encrypted.\n\n'
                         'A planner copy leaves the app only when you choose Save '
-                        'Planner Copy or Share Planner Copy. Exported copies '
-                        'are readable text reports and are not currently protected by '
-                        'a separate password, so keep them in a private place.\n\n'
+                        'Planner Copy, Share Planner Copy, or Encrypted Planner '
+                        'Copy. Readable reports are not password-protected. The '
+                        'encrypted option uses a password that is never stored by '
+                        'Smart Planner and can be saved through your chosen cloud '
+                        'or email app.\n\n'
                         'Medicine-safety contacts also stay on this device. Call and '
                         'Email buttons only open your phone or email app; nothing is '
                         'called or sent unless you complete the action yourself.',
@@ -167,6 +185,13 @@ class SettingsScreen extends ConsumerWidget {
                       onTap: () => _shareBackup(context, ref),
                     ),
                     _SettingsTile(
+                      key: const Key('encrypted-backup-setting'),
+                      icon: Icons.lock_outline,
+                      title: 'Encrypted Planner Copy',
+                      subtitle: 'Password-protected copy for your cloud',
+                      onTap: () => _encryptedBackupOptions(context, ref),
+                    ),
+                    _SettingsTile(
                       icon: Icons.insights_outlined,
                       title: 'Statistics',
                       subtitle: 'Charts and productivity insights',
@@ -180,6 +205,17 @@ class SettingsScreen extends ConsumerWidget {
                           _openPage(context, const HistoryTrashScreen()),
                     ),
                     _SettingsTile(
+                      key: const Key('completed-cleanup-setting'),
+                      icon: Icons.auto_delete_outlined,
+                      title: 'Completed task cleanup',
+                      subtitle: appSettings?.completedCleanupLabel ?? 'Off',
+                      onTap: () => _pickCompletedCleanup(
+                        context,
+                        ref,
+                        appSettings?.completedCleanupDays ?? 0,
+                      ),
+                    ),
+                    _SettingsTile(
                       icon: Icons.delete_forever_outlined,
                       title: 'Clear Data',
                       subtitle: 'Remove all reminders and history',
@@ -188,12 +224,12 @@ class SettingsScreen extends ConsumerWidget {
                     _SettingsTile(
                       icon: Icons.info_outline,
                       title: 'About Smart Planner',
-                      subtitle: 'Version 1.4.5',
+                      subtitle: 'Version 1.5.1',
                       showDivider: false,
                       onTap: () => _info(
                         context,
                         'About Smart Planner',
-                        'Offline-first reminder and task planner\nVersion 1.4.5',
+                        'Offline-first reminder and task planner\nVersion 1.5.1',
                       ),
                     ),
                   ],
@@ -226,6 +262,120 @@ class SettingsScreen extends ConsumerWidget {
           .read(appSettingsControllerProvider.notifier)
           .setDefaultTime(time);
     }
+  }
+
+  Future<void> _showNotificationHealth(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    var health = await ref.read(notificationHealthProvider.future);
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Notification health'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _HealthRow(
+                label: 'Reminder notifications',
+                enabled: health.notificationsEnabled,
+              ),
+              const SizedBox(height: 10),
+              _HealthRow(
+                label: 'Exact high-priority alarms',
+                enabled: health.exactAlarmsEnabled,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Exact-alarm access is used only when you enable an alarm for '
+                'a high-priority task.',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            if (!health.isHealthy)
+              FilledButton.icon(
+                onPressed: () async {
+                  health = await ref
+                      .read(localNotificationServiceProvider)
+                      .requestMissingHealthPermissions();
+                  ref.invalidate(notificationHealthProvider);
+                  if (dialogContext.mounted) setDialogState(() {});
+                },
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Fix permissions'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickCompletedCleanup(
+    BuildContext context,
+    WidgetRef ref,
+    int current,
+  ) async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text('Completed task cleanup'),
+              subtitle: Text(
+                'Old completed tasks move to Trash and can still be restored.',
+              ),
+            ),
+            for (final option in const [0, 30, 90, 180])
+              ListTile(
+                leading: Icon(
+                  current == option
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                ),
+                title: Text(option == 0 ? 'Off' : 'After $option days'),
+                onTap: () => Navigator.pop(sheetContext, option),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || selected == current || !context.mounted) return;
+    if (selected > 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Enable completed task cleanup?'),
+          content: Text(
+            'Completed tasks older than $selected days will move to Trash. '
+            'They are not deleted immediately and can still be restored.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Enable'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    await ref
+        .read(appSettingsControllerProvider.notifier)
+        .setCompletedCleanupDays(selected);
   }
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
@@ -276,6 +426,97 @@ class SettingsScreen extends ConsumerWidget {
       }
     }
   }
+
+  Future<void> _encryptedBackupOptions(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text('Encrypted Planner Copy'),
+              subtitle: Text(
+                'The password stays with you and is never stored by the app.',
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: const Text('Create and share encrypted copy'),
+              subtitle: const Text('Save to Drive, email, or another app'),
+              onTap: () => Navigator.pop(sheetContext, 'create'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.lock_open_outlined),
+              title: const Text('Unlock an encrypted copy'),
+              subtitle: const Text('Create a readable text copy'),
+              onTap: () => Navigator.pop(sheetContext, 'unlock'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !context.mounted) return;
+    final password = await _requestBackupPassword(
+      context,
+      confirm: action == 'create',
+    );
+    if (password == null || !context.mounted) return;
+    try {
+      if (action == 'unlock') {
+        final path = await ref
+            .read(backupServiceProvider)
+            .unlockEncryptedBackup(password);
+        if (path != null && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Unlocked copy saved to $path')),
+          );
+        }
+        return;
+      }
+      final file = await ref
+          .read(backupServiceProvider)
+          .createEncryptedBackup(password);
+      if (!context.mounted) return;
+      final box = context.findRenderObject() as RenderBox?;
+      await SharePlus.instance.share(
+        ShareParams(
+          subject: 'Smart Planner encrypted copy',
+          text:
+              'Password-protected Smart Planner copy. Keep the password private.',
+          files: [XFile(file.path, mimeType: 'application/octet-stream')],
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        ),
+      );
+    } on FormatException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Encrypted copy failed: $error')),
+        );
+      }
+    }
+  }
+
+  Future<String?> _requestBackupPassword(
+    BuildContext context, {
+    required bool confirm,
+  }) => showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _BackupPasswordDialog(confirm: confirm),
+  );
 
   Future<void> _clearData(BuildContext context, WidgetRef ref) async {
     final yes = await showDialog<bool>(
@@ -429,6 +670,108 @@ class SettingsScreen extends ConsumerWidget {
       );
     }
   }
+}
+
+class _BackupPasswordDialog extends StatefulWidget {
+  const _BackupPasswordDialog({required this.confirm});
+
+  final bool confirm;
+
+  @override
+  State<_BackupPasswordDialog> createState() => _BackupPasswordDialogState();
+}
+
+class _BackupPasswordDialogState extends State<_BackupPasswordDialog> {
+  final _password = TextEditingController();
+  final _confirmation = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    _confirmation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.confirm ? 'Protect your copy' : 'Unlock your copy'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            key: const Key('encrypted-backup-password'),
+            controller: _password,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              helperText: 'At least 8 characters',
+            ),
+          ),
+          if (widget.confirm) ...[
+            const SizedBox(height: 10),
+            TextField(
+              key: const Key('encrypted-backup-confirm-password'),
+              controller: _confirmation,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Confirm password'),
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (_password.text.length < 8) {
+            setState(() => _error = 'Use at least 8 characters.');
+            return;
+          }
+          if (widget.confirm && _password.text != _confirmation.text) {
+            setState(() => _error = 'Passwords do not match.');
+            return;
+          }
+          Navigator.pop(context, _password.text);
+        },
+        child: Text(widget.confirm ? 'Create' : 'Unlock'),
+      ),
+    ],
+  );
+}
+
+class _HealthRow extends StatelessWidget {
+  const _HealthRow({required this.label, required this.enabled});
+
+  final String label;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(
+        enabled ? Icons.check_circle : Icons.error_outline,
+        color: enabled
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.error,
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Text(label)),
+      Text(enabled ? 'Ready' : 'Off'),
+    ],
+  );
 }
 
 class _SettingsTile extends StatelessWidget {

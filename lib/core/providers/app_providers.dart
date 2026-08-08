@@ -9,6 +9,7 @@ import 'package:smart_reminder/core/services/local_media_service.dart';
 import 'package:smart_reminder/core/services/backup_service.dart';
 import 'package:smart_reminder/core/services/app_engagement_service.dart';
 import 'package:smart_reminder/features/settings/data/repositories/shared_preferences_notification_settings_repository.dart';
+import 'package:smart_reminder/features/settings/application/app_settings_controller.dart';
 import 'package:smart_reminder/features/settings/domain/repositories/notification_settings_repository.dart';
 import 'package:smart_reminder/features/settings/domain/services/notification_sound_preference_service.dart';
 import 'package:smart_reminder/features/tasks/data/repositories/drift_task_repository.dart';
@@ -62,6 +63,16 @@ final taskHistoryProvider = StreamProvider<List<TaskHistoryItem>>((ref) {
   return ref.watch(taskRepositoryProvider).watchHistory();
 });
 
+final completedTaskCleanupProvider = FutureProvider<int>((ref) async {
+  if (ref.watch(isTestEnvironmentProvider)) return 0;
+  final settings = await ref.watch(appSettingsControllerProvider.future);
+  if (settings.completedCleanupDays == 0) return 0;
+  final cutoff = DateTime.now().subtract(
+    Duration(days: settings.completedCleanupDays),
+  );
+  return ref.read(taskRepositoryProvider).moveCompletedBeforeToTrash(cutoff);
+});
+
 final taskDetailsProvider = FutureProvider.family<TaskDetails?, String>((
   ref,
   id,
@@ -106,6 +117,17 @@ final localNotificationServiceProvider = Provider<LocalNotificationService>((
   ref.onDispose(service.dispose);
   return service;
 });
+
+final notificationHealthProvider =
+    FutureProvider.autoDispose<NotificationHealth>((ref) async {
+      if (ref.watch(isTestEnvironmentProvider)) {
+        return const NotificationHealth(
+          notificationsEnabled: true,
+          exactAlarmsEnabled: true,
+        );
+      }
+      return ref.watch(localNotificationServiceProvider).checkHealth();
+    });
 
 final appEngagementServiceProvider = Provider<AppEngagementService>((ref) {
   final service = AppEngagementService(

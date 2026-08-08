@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +23,8 @@ final class BackupService {
     'history',
     'settings',
   ];
+  static const _encryptedFormat = 'smart-planner-encrypted-copy';
+  static const _encryptionIterations = 210000;
 
   Future<String?> exportTextBackup() async {
     final bytes = await _backupBytes();
@@ -53,6 +57,123 @@ final class BackupService {
     return file;
   }
 
+  Future<File> createEncryptedBackup(String password) async {
+    final directory = await getTemporaryDirectory();
+    final file = File(p.join(directory.path, _encryptedBackupFileName()));
+    await file.writeAsBytes(await encryptReadableBackup(password), flush: true);
+    return file;
+  }
+
+  Future<Uint8List> encryptReadableBackup(String password) async {
+    if (password.length < 8) {
+      throw const FormatException('Use at least 8 characters.');
+    }
+    final random = Random.secure();
+    final salt = List<int>.generate(16, (_) => random.nextInt(256));
+    final algorithm = AesGcm.with256bits();
+    final nonce = algorithm.newNonce();
+    final key = await Pbkdf2(
+      macAlgorithm: Hmac.sha256(),
+      iterations: _encryptionIterations,
+      bits: 256,
+    ).deriveKey(secretKey: SecretKey(utf8.encode(password)), nonce: salt);
+    final encrypted = await algorithm.encrypt(
+      await _backupBytes(),
+      secretKey: key,
+      nonce: nonce,
+    );
+    final envelope = <String, Object>{
+      'format': _encryptedFormat,
+      'version': 1,
+      'algorithm': 'AES-256-GCM',
+      'kdf': 'PBKDF2-HMAC-SHA256',
+      'iterations': _encryptionIterations,
+      'salt': base64Encode(salt),
+      'nonce': base64Encode(encrypted.nonce),
+      'cipherText': base64Encode(encrypted.cipherText),
+      'mac': base64Encode(encrypted.mac.bytes),
+    };
+    return Uint8List.fromList(utf8.encode(jsonEncode(envelope)));
+  }
+
+  Future<String> decryptEncryptedBackup(
+    Uint8List encryptedBytes,
+    String password,
+  ) async {
+    try {
+      final decoded = jsonDecode(utf8.decode(encryptedBytes));
+      if (decoded is! Map<String, dynamic> ||
+          decoded['format'] != _encryptedFormat ||
+          decoded['version'] != 1) {
+        throw const FormatException('Unsupported encrypted copy.');
+      }
+      final salt = base64Decode(decoded['salt'] as String);
+      final iterations = decoded['iterations'] as int;
+      if (iterations < 100000 || iterations > 1000000) {
+        throw const FormatException('Unsupported encryption settings.');
+      }
+      final key = await Pbkdf2(
+        macAlgorithm: Hmac.sha256(),
+        iterations: iterations,
+        bits: 256,
+      ).deriveKey(secretKey: SecretKey(utf8.encode(password)), nonce: salt);
+      final clearBytes = await AesGcm.with256bits().decrypt(
+        SecretBox(
+          base64Decode(decoded['cipherText'] as String),
+          nonce: base64Decode(decoded['nonce'] as String),
+          mac: Mac(base64Decode(decoded['mac'] as String)),
+        ),
+        secretKey: key,
+      );
+      return utf8.decode(clearBytes);
+    } on FormatException {
+      rethrow;
+    } catch (_) {
+      throw const FormatException(
+        'The password is incorrect or the encrypted copy is damaged.',
+      );
+    }
+  }
+
+  Future<String?> unlockEncryptedBackup(String password) async {
+    final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['spbackup'],
+      withData: true,
+    );
+    final item = picked?.files.single;
+    if (item == null) return null;
+    final encryptedBytes =
+        item.bytes ??
+        (item.path == null ? null : await File(item.path!).readAsBytes());
+    if (encryptedBytes == null) {
+      throw const FormatException('The encrypted copy could not be read.');
+    }
+    final text = await decryptEncryptedBackup(encryptedBytes, password);
+    final bytes = Uint8List.fromList(utf8.encode(text));
+    final fileName = _unlockedBackupFileName();
+    try {
+      final path = await FilePicker.saveFile(
+        dialogTitle: 'Save unlocked Smart Planner copy',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['txt'],
+        bytes: bytes,
+      );
+      if (path != null && !await File(path).exists()) {
+        await File(path).writeAsBytes(bytes, flush: true);
+      }
+      return path;
+    } catch (_) {
+      final directory =
+          await getDownloadsDirectory() ??
+          await getApplicationDocumentsDirectory();
+      final file = File(p.join(directory.path, fileName));
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    }
+  }
+
   Future<Uint8List> _backupBytes() async {
     return Uint8List.fromList(utf8.encode(await createReadableBackupText()));
   }
@@ -72,6 +193,12 @@ final class BackupService {
 
   String _backupFileName() =>
       'smart_planner_copy_${DateTime.now().millisecondsSinceEpoch}.txt';
+
+  String _encryptedBackupFileName() =>
+      'smart_planner_encrypted_${DateTime.now().millisecondsSinceEpoch}.spbackup';
+
+  String _unlockedBackupFileName() =>
+      'smart_planner_unlocked_${DateTime.now().millisecondsSinceEpoch}.txt';
 
   Future<String?> exportSqlite() async {
     await _database.customStatement('PRAGMA wal_checkpoint(FULL)');

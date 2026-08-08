@@ -26,6 +26,7 @@ class SmartReminderApp extends ConsumerWidget {
     if (!ref.watch(isTestEnvironmentProvider)) {
       ref.watch(taskNotificationCoordinatorProvider);
       ref.watch(appEngagementServiceProvider);
+      ref.watch(completedTaskCleanupProvider);
     }
     return MaterialApp.router(
       title: 'Smart Planner',

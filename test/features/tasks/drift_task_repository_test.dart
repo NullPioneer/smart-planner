@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_reminder/core/database/app_database.dart';
 import 'package:smart_reminder/features/tasks/data/repositories/drift_task_repository.dart';
@@ -120,5 +121,37 @@ void main() {
       '3333333333',
     ]);
     expect(saved.emergencyEmail, 'trusted@example.com');
+  });
+
+  test('completed cleanup moves only old completed tasks to trash', () async {
+    final oldId = await repository.saveTask(
+      TaskDraft(
+        title: 'Old completed task',
+        dueAt: DateTime.now().subtract(const Duration(days: 50)),
+      ),
+    );
+    final recentId = await repository.saveTask(
+      TaskDraft(title: 'Recent completed task', dueAt: DateTime.now()),
+    );
+    await repository.setCompleted(oldId, completed: true);
+    await repository.setCompleted(recentId, completed: true);
+    await (database.update(
+      database.tasks,
+    )..where((task) => task.id.equals(oldId))).write(
+      TasksCompanion(
+        completedAt: Value(DateTime.now().subtract(const Duration(days: 40))),
+      ),
+    );
+
+    final moved = await repository.moveCompletedBeforeToTrash(
+      DateTime.now().subtract(const Duration(days: 30)),
+    );
+
+    expect(moved, 1);
+    expect((await repository.watchTrash().first).single.id, oldId);
+    expect(
+      (await repository.getTaskDetails(recentId))?.task.isDeleted,
+      isFalse,
+    );
   });
 }
