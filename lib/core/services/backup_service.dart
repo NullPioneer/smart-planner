@@ -210,6 +210,23 @@ final class BackupService {
           );
         _writeIfPresent(buffer, 'Description', task['description']);
         _writeIfPresent(buffer, 'Notes', task['notes']);
+        if (task['alarm_enabled'] == true) {
+          buffer.writeln('   Due-time alarm: Enabled');
+        }
+        final emergencyContacts =
+            [
+                  task['emergency_contact1'],
+                  task['emergency_contact2'],
+                  task['emergency_contact3'],
+                ]
+                .where((value) => value?.toString().trim().isNotEmpty == true)
+                .toList();
+        if (emergencyContacts.isNotEmpty) {
+          buffer.writeln(
+            '   Emergency contacts: ${emergencyContacts.join(', ')}',
+          );
+        }
+        _writeIfPresent(buffer, 'Emergency email', task['emergency_email']);
         if (taskChecklist.isNotEmpty) {
           buffer.writeln('   Checklist:');
           for (final item in taskChecklist) {

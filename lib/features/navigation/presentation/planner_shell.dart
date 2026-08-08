@@ -6,7 +6,6 @@ import 'package:smart_reminder/core/providers/app_providers.dart';
 import 'package:smart_reminder/features/calendar/presentation/calendar_screen.dart';
 import 'package:smart_reminder/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:smart_reminder/features/settings/presentation/settings_screen.dart';
-import 'package:smart_reminder/features/settings/application/app_settings_controller.dart';
 import 'package:smart_reminder/features/tasks/presentation/tasks_screen.dart';
 import 'package:smart_reminder/features/tasks/presentation/task_details_screen.dart';
 import 'package:smart_reminder/features/tasks/presentation/statistics_screen.dart';
@@ -146,11 +145,7 @@ class _PlannerShellState extends ConsumerState<PlannerShell> {
                   ? Row(
                       children: [
                         NavigationRail(
-                          backgroundColor: theme.colorScheme.surface.withValues(
-                            alpha: theme.brightness == Brightness.dark
-                                ? .94
-                                : .86,
-                          ),
+                          backgroundColor: theme.colorScheme.surface,
                           selectedIndex: _selectedIndex,
                           onDestinationSelected: _selectPage,
                           labelType: NavigationRailLabelType.all,
@@ -211,8 +206,6 @@ class _QuickSettingsDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final settings = ref.watch(appSettingsControllerProvider).value;
-    final isDark = settings?.themeMode != ThemeMode.light;
     return Drawer(
       key: const Key('settings-drawer'),
       width: (MediaQuery.sizeOf(context).width * .84)
@@ -240,7 +233,7 @@ class _QuickSettingsDrawer extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Quick settings',
+                        'Menu',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -254,49 +247,25 @@ class _QuickSettingsDrawer extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 12),
                 GlassPanel(
                   padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        key: const Key('quick-theme-switch'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        secondary: Icon(
-                          isDark
-                              ? Icons.dark_mode_rounded
-                              : Icons.light_mode_rounded,
-                          color: theme.colorScheme.primary,
-                        ),
-                        title: Text(isDark ? 'Dark mode' : 'Light mode'),
-                        subtitle: const Text('Change the app appearance'),
-                        value: isDark,
-                        onChanged: (value) => ref
-                            .read(appSettingsControllerProvider.notifier)
-                            .setTheme(value ? ThemeMode.dark : ThemeMode.light),
-                      ),
-                      Divider(height: 1, color: theme.dividerColor),
-                      ListTile(
-                        key: const Key('open-full-settings'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 7,
-                        ),
-                        leading: Icon(
-                          Icons.settings_rounded,
-                          color: theme.colorScheme.secondary,
-                        ),
-                        title: const Text('Settings'),
-                        subtitle: const Text(
-                          'Notifications, data, privacy and more',
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: onSettings,
-                      ),
-                    ],
+                  child: ListTile(
+                    key: const Key('open-full-settings'),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 4,
+                    ),
+                    leading: Icon(
+                      Icons.settings_rounded,
+                      color: theme.colorScheme.secondary,
+                    ),
+                    title: const Text('Settings'),
+                    subtitle: const Text(
+                      'Notifications, data, privacy and more',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: onSettings,
                   ),
                 ),
                 const Spacer(),

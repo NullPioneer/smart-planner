@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:smart_reminder/features/settings/domain/entities/notification_sound_option.dart';
@@ -12,10 +13,12 @@ final class ReminderNotificationAction {
     required this.actionId,
     required this.taskId,
     this.notificationId,
+    this.isAlarm = false,
   });
   final String actionId;
   final String taskId;
   final int? notificationId;
+  final bool isAlarm;
 }
 
 /// Android notification gateway used by reminder application services.
@@ -29,8 +32,14 @@ final class LocalNotificationService {
   static const completeAction = 'complete';
   static const snoozeAction = 'snooze';
   static const openAction = 'open';
+  static const stopAlarmAction = 'stop_alarm';
   static const _channelName = 'Reminders';
   static const _channelDescription = 'Task and reminder notifications';
+  static const _deviceAlarmChannelId =
+      'smart_planner_high_priority_device_alarm_v2';
+  static const _deviceDefaultAlarmSound = UriAndroidNotificationSound(
+    'content://settings/system/alarm_alert',
+  );
   static const _demoNotificationId = 0x534D50;
   static const _engagementNotificationId = 0x535452;
 
@@ -67,7 +76,7 @@ final class LocalNotificationService {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       final taskId = data['taskId'] as String?;
-      if (taskId != null)
+      if (taskId != null) {
         _actions.add(
           ReminderNotificationAction(
             actionId: response.actionId?.isNotEmpty == true
@@ -75,8 +84,10 @@ final class LocalNotificationService {
                 : openAction,
             taskId: taskId,
             notificationId: response.id,
+            isAlarm: data['alarm'] == true,
           ),
         );
+      }
     } catch (_) {}
   }
 
@@ -127,8 +138,9 @@ final class LocalNotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     try {
-      if (await android?.requestExactAlarmsPermission() ?? false)
+      if (await android?.requestExactAlarmsPermission() ?? false) {
         mode = AndroidScheduleMode.exactAllowWhileIdle;
+      }
     } catch (_) {}
     await _plugin.zonedSchedule(
       id: id,
@@ -137,6 +149,33 @@ final class LocalNotificationService {
       scheduledDate: tz.TZDateTime.from(scheduledFor.toUtc(), tz.UTC),
       notificationDetails: notificationDetailsFor(sound),
       payload: jsonEncode({'taskId': taskId}),
+      androidScheduleMode: mode,
+    );
+    return true;
+  }
+
+  /// Schedules an insistent Android alarm for a high-priority task.
+  /// If exact-alarm access is unavailable, Android still receives an inexact
+  /// alarm-style notification instead of silently dropping the alert.
+  Future<bool> scheduleAlarm({
+    required int id,
+    required String taskId,
+    required String title,
+    required String body,
+    required DateTime scheduledFor,
+  }) async {
+    await initialize();
+    if (scheduledFor.isBefore(DateTime.now())) return false;
+    if (!await requestPermission()) return false;
+    await _ensureAndroidAlarmChannel();
+    final mode = await _preferredScheduleMode();
+    await _plugin.zonedSchedule(
+      id: id,
+      title: 'High priority • $title',
+      body: body,
+      scheduledDate: tz.TZDateTime.from(scheduledFor.toUtc(), tz.UTC),
+      notificationDetails: alarmNotificationDetailsFor(),
+      payload: jsonEncode({'taskId': taskId, 'alarm': true}),
       androidScheduleMode: mode,
     );
     return true;
@@ -216,18 +255,64 @@ final class LocalNotificationService {
     );
   }
 
+  Future<void> _ensureAndroidAlarmChannel() async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await android?.createNotificationChannel(
+      AndroidNotificationChannel(
+        _deviceAlarmChannelId,
+        'High priority alarms',
+        description: 'Due-time alarms using the device alarm sound',
+        importance: Importance.max,
+        playSound: true,
+        sound: _deviceDefaultAlarmSound,
+        enableVibration: true,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+      ),
+    );
+  }
+
+  Future<AndroidScheduleMode> _preferredScheduleMode() async {
+    var mode = AndroidScheduleMode.inexactAllowWhileIdle;
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    try {
+      if (await android?.requestExactAlarmsPermission() ?? false) {
+        mode = AndroidScheduleMode.exactAllowWhileIdle;
+      }
+    } catch (_) {}
+    return mode;
+  }
+
   Future<void> snooze({
     required String taskId,
     required String title,
     int minutes = 15,
+    bool asAlarm = false,
   }) async {
-    await scheduleReminder(
-      id: DateTime.now().millisecondsSinceEpoch.remainder(0x7fffffff),
-      taskId: taskId,
-      title: title,
-      body: 'Snoozed reminder',
-      scheduledFor: DateTime.now().add(Duration(minutes: minutes)),
-    );
+    final scheduledFor = DateTime.now().add(Duration(minutes: minutes));
+    final id = DateTime.now().millisecondsSinceEpoch.remainder(0x7fffffff);
+    if (asAlarm) {
+      await scheduleAlarm(
+        id: id,
+        taskId: taskId,
+        title: title,
+        body: 'Snoozed high-priority alarm',
+        scheduledFor: scheduledFor,
+      );
+    } else {
+      await scheduleReminder(
+        id: id,
+        taskId: taskId,
+        title: title,
+        body: 'Snoozed reminder',
+        scheduledFor: scheduledFor,
+      );
+    }
   }
 
   Future<void> cancel(int id) async {
@@ -237,9 +322,23 @@ final class LocalNotificationService {
 
   Future<void> cancelForTask(String taskId) async {
     await initialize();
+    bool belongsToTask(String? payload) =>
+        payload?.contains('"taskId":"$taskId"') ?? false;
     for (final request in await _plugin.pendingNotificationRequests()) {
-      if (request.payload?.contains('"taskId":"$taskId"') ?? false)
+      if (belongsToTask(request.payload)) {
         await _plugin.cancel(id: request.id);
+      }
+    }
+    try {
+      for (final notification in await _plugin.getActiveNotifications()) {
+        final id = notification.id;
+        if (id != null && belongsToTask(notification.payload)) {
+          await _plugin.cancel(id: id);
+        }
+      }
+    } catch (_) {
+      // Active-notification lookup is unavailable on a few non-Android hosts.
+      // Pending reminders are still cancelled above.
     }
   }
 
@@ -250,6 +349,9 @@ final class LocalNotificationService {
 
   NotificationDetails notificationDetailsFor(NotificationSoundOption sound) =>
       NotificationDetails(android: androidDetailsFor(sound));
+
+  NotificationDetails alarmNotificationDetailsFor() =>
+      NotificationDetails(android: alarmDetailsFor());
 
   NotificationDetails _engagementDetailsFor(NotificationSoundOption sound) =>
       NotificationDetails(
@@ -300,6 +402,40 @@ final class LocalNotificationService {
           ),
         ],
       );
+
+  AndroidNotificationDetails alarmDetailsFor() => AndroidNotificationDetails(
+    _deviceAlarmChannelId,
+    'High priority alarms',
+    channelDescription: 'Due-time alarms using the device alarm sound',
+    icon: 'ic_notification',
+    importance: Importance.max,
+    priority: Priority.max,
+    playSound: true,
+    enableVibration: true,
+    audioAttributesUsage: AudioAttributesUsage.alarm,
+    sound: _deviceDefaultAlarmSound,
+    category: AndroidNotificationCategory.alarm,
+    autoCancel: false,
+    ongoing: true,
+    additionalFlags: Int32List.fromList(const [4]),
+    actions: const [
+      AndroidNotificationAction(
+        stopAlarmAction,
+        'Stop',
+        showsUserInterface: true,
+      ),
+      AndroidNotificationAction(
+        snoozeAction,
+        'Snooze 15m',
+        showsUserInterface: true,
+      ),
+      AndroidNotificationAction(
+        openAction,
+        'Open task',
+        showsUserInterface: true,
+      ),
+    ],
+  );
 
   Future<void> dispose() async {
     await _actions.close();

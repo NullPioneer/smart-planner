@@ -109,7 +109,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     final categories =
         ref.watch(taskCategoriesProvider).value ?? const <TaskCategory>[];
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 26, 20, 112),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 92),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1080),
@@ -119,24 +119,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PLANNER ACTIVE',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Task Stream',
-                          style: Theme.of(context).textTheme.displaySmall,
-                        ),
-                      ],
+                    child: Text(
+                      'Tasks',
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
                   FilledButton.icon(
@@ -448,13 +433,13 @@ class _TaskCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 4,
-              constraints: const BoxConstraints(minHeight: 150),
+              width: 3,
+              constraints: const BoxConstraints(minHeight: 110),
               color: color,
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -528,7 +513,7 @@ class _TaskCard extends StatelessWidget {
                       ),
                     ],
                     _TaskChecklistProgress(taskId: task.id),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 10,
                       runSpacing: 6,
@@ -599,7 +584,7 @@ class _TaskChecklistProgress extends ConsumerWidget {
         }
         final checked = value.checklist.where((item) => item.isChecked).length;
         return Padding(
-          padding: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.only(top: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -619,7 +604,7 @@ class _TaskChecklistProgress extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               LinearProgressIndicator(
                 value: value.checklistProgress,
                 minHeight: 5,

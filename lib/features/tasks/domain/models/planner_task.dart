@@ -21,6 +21,9 @@ final class PlannerTask {
     this.completedAt,
     this.repeatEndDate,
     this.deletedAt,
+    this.emergencyContactNumbers = const [],
+    this.emergencyEmail = '',
+    this.alarmEnabled = false,
   });
 
   final String id;
@@ -38,9 +41,15 @@ final class PlannerTask {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+  final List<String> emergencyContactNumbers;
+  final String emergencyEmail;
+  final bool alarmEnabled;
 
   bool get isCompleted => completedAt != null;
   bool get isDeleted => deletedAt != null;
+  bool get isMedicineSafetyReminder =>
+      priority == TaskPriority.high &&
+      (categoryId == 'medicine' || isMedicineReminderTitle(title));
   bool get isOverdue => !isCompleted && dueAt.isBefore(DateTime.now());
   bool get isToday {
     final now = DateTime.now();
@@ -65,6 +74,9 @@ final class TaskDraft {
     this.notes = '',
     this.checklist = const [],
     this.reminderOffsetsMinutes = const [0],
+    this.emergencyContactNumbers = const [],
+    this.emergencyEmail = '',
+    this.alarmEnabled = false,
   });
 
   final String? id;
@@ -80,7 +92,15 @@ final class TaskDraft {
   final String notes;
   final List<ChecklistDraft> checklist;
   final List<int> reminderOffsetsMinutes;
+  final List<String> emergencyContactNumbers;
+  final String emergencyEmail;
+  final bool alarmEnabled;
 }
+
+bool isMedicineReminderTitle(String title) => RegExp(
+  r'\b(medicine|medication|medications|pill|pills|tablet|tablets|dose)\b',
+  caseSensitive: false,
+).hasMatch(title.trim());
 
 final class ChecklistDraft {
   const ChecklistDraft({required this.title, this.id, this.isChecked = false});

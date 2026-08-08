@@ -21,6 +21,96 @@ void main() {
     updatedAt: DateTime(2026, 8, 7),
   );
 
+  testWidgets('high priority offers an opt-in due-time alarm', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: AddTaskScreen())),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('high-priority-alarm-switch')), findsNothing);
+    await tester.tap(find.text('High'));
+    await tester.pumpAndSettle();
+
+    final alarmFinder = find.byKey(const Key('high-priority-alarm-switch'));
+    expect(alarmFinder, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(alarmFinder).value, isFalse);
+    await tester.ensureVisible(alarmFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(alarmFinder);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(alarmFinder).value, isTrue);
+    expect(find.textContaining('Stop, Snooze, and Open Task'), findsOneWidget);
+  });
+
+  testWidgets('high-priority medicine task shows three optional contacts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: AddTaskScreen())),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('task-title-field')),
+      'Medicine dose',
+    );
+    await tester.tap(find.text('High'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -1700));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('emergency-contact-1')), findsOneWidget);
+    expect(find.byKey(const Key('emergency-contact-2')), findsOneWidget);
+    expect(find.byKey(const Key('emergency-contact-3')), findsOneWidget);
+    expect(find.byKey(const Key('emergency-email')), findsOneWidget);
+    expect(find.textContaining('never calls or emails'), findsOneWidget);
+  });
+
+  testWidgets(
+    'medicine details expose user-controlled Call and Email actions',
+    (tester) async {
+      final medicineTask = PlannerTask(
+        id: 'medicine-safety',
+        title: 'Medicine dose',
+        description: '',
+        categoryId: 'medicine',
+        priority: TaskPriority.high,
+        dueAt: DateTime(2026, 8, 8, 9),
+        isPinned: false,
+        repeatType: TaskRepeatType.daily,
+        repeatInterval: 1,
+        notes: 'One prescribed tablet after food.',
+        emergencyContactNumbers: const ['1111111111'],
+        emergencyEmail: 'trusted@example.com',
+        createdAt: DateTime(2026, 8, 7),
+        updatedAt: DateTime(2026, 8, 7),
+      );
+      final details = TaskDetails(
+        task: medicineTask,
+        checklist: const [],
+        attachments: const [],
+        voiceNotes: const [],
+        reminders: const [],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskDetailsProvider.overrideWith((ref, id) async => details),
+          ],
+          child: const MaterialApp(
+            home: TaskDetailsScreen(taskId: 'medicine-safety'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Medicine safety'), findsOneWidget);
+      expect(find.text('Call'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
+      expect(find.textContaining('never calls or emails'), findsOneWidget);
+    },
+  );
+
   testWidgets('Save is disabled until an existing task changes', (
     tester,
   ) async {

@@ -13,6 +13,7 @@ import 'package:smart_reminder/features/tasks/presentation/add_task_screen.dart'
 import 'package:smart_reminder/features/tasks/presentation/attachment_viewer_screen.dart';
 import 'package:smart_reminder/features/tasks/presentation/completion_reward_feedback.dart';
 import 'package:smart_reminder/shared/widgets/glass_panel.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum _FileAction { play, saveCopy, share, delete }
 
@@ -69,7 +70,7 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
         ?.where((c) => c.id == task.categoryId)
         .firstOrNull;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
         GlassPanel(
           child: Column(
@@ -102,6 +103,11 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                 DateFormat('EEEE, d MMMM y').format(task.dueAt),
               ),
               _Info(Icons.schedule, DateFormat('h:mm a').format(task.dueAt)),
+              if (task.priority == TaskPriority.high && task.alarmEnabled)
+                const _Info(
+                  Icons.alarm_rounded,
+                  'Alarm enabled at the due time',
+                ),
               _Info(
                 Icons.notifications_active,
                 d.reminders
@@ -129,6 +135,49 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
           ),
         ),
         const SizedBox(height: 14),
+        if (task.isMedicineSafetyReminder) ...[
+          _section('Medicine safety', Icons.health_and_safety_outlined, [
+            const Text(
+              'These details were entered by the user for quick access. Smart Planner never calls or emails anyone automatically.',
+            ),
+            const SizedBox(height: 10),
+            if (task.emergencyContactNumbers.isEmpty &&
+                task.emergencyEmail.isEmpty)
+              const Text('No emergency contacts saved. Tap Edit to add them.'),
+            for (final number in task.emergencyContactNumbers)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.phone_outlined),
+                title: Text(number),
+                subtitle: const Text('Opens the phone dialler'),
+                trailing: FilledButton.tonalIcon(
+                  onPressed: () => _dialEmergencyContact(number),
+                  icon: const Icon(Icons.call_outlined),
+                  label: const Text('Call'),
+                ),
+              ),
+            if (task.emergencyEmail.isNotEmpty)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.email_outlined),
+                title: Text(task.emergencyEmail),
+                subtitle: const Text(
+                  'Opens a pre-filled email for you to review',
+                ),
+                trailing: FilledButton.tonalIcon(
+                  onPressed: () => _composeMedicineEmail(task),
+                  icon: const Icon(Icons.send_outlined),
+                  label: const Text('Email'),
+                ),
+              ),
+            const SizedBox(height: 8),
+            const Text(
+              'Verify medicine and dosage information with a healthcare professional. For an emergency, contact local emergency services.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ]),
+          const SizedBox(height: 14),
+        ],
         _section('Checklist', Icons.checklist, [
           if (d.checklist.isEmpty) const Text('No checklist items.'),
           for (final item in d.checklist)
@@ -314,6 +363,54 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
           ],
         ),
       );
+
+  Future<void> _dialEmergencyContact(String number) async {
+    final uri = Uri(scheme: 'tel', path: number);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No phone app could open this number.')),
+      );
+    }
+  }
+
+  Future<void> _composeMedicineEmail(PlannerTask task) async {
+    final prescriptionNotes = task.notes.trim().isEmpty
+        ? 'No prescribed medicine information was added to Notes.'
+        : task.notes.trim();
+    final body =
+        '''Medicine reminder: ${task.title}
+Due: ${DateFormat('d MMM y, h:mm a').format(task.dueAt)}
+
+Prescribed medicine information entered in Smart Planner:
+$prescriptionNotes
+
+Please verify this information with the prescribing healthcare professional.''';
+    final uri = Uri(
+      scheme: 'mailto',
+      path: task.emergencyEmail,
+      query: _encodeQueryParameters({
+        'subject': 'Medicine information - ${task.title}',
+        'body': body,
+      }),
+    );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No email app could create this message.'),
+        ),
+      );
+    }
+  }
+
+  String _encodeQueryParameters(Map<String, String> parameters) => parameters
+      .entries
+      .map(
+        (entry) =>
+            '${Uri.encodeComponent(entry.key)}=${Uri.encodeComponent(entry.value)}',
+      )
+      .join('&');
 
   Widget _checklistTile(
     ChecklistItemModel item, {

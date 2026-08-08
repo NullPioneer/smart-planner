@@ -23,7 +23,7 @@ class SettingsScreen extends ConsumerWidget {
     return SingleChildScrollView(
       padding: compact
           ? const EdgeInsets.fromLTRB(16, 14, 16, 36)
-          : const EdgeInsets.fromLTRB(20, 26, 20, 112),
+          : const EdgeInsets.fromLTRB(16, 16, 16, 92),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
@@ -62,43 +62,7 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 5),
-              Text(
-                'Personalize your planner experience',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              SizedBox(height: compact ? 18 : 22),
-              const SectionLabel('Appearance'),
-              const SizedBox(height: 10),
-              GlassPanel(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _SettingsTile(
-                      icon: Icons.dark_mode_outlined,
-                      title: 'Theme',
-                      subtitle: _themeLabel(
-                        appSettings?.themeMode ?? ThemeMode.dark,
-                      ),
-                      onTap: () => _showThemePicker(context, ref),
-                    ),
-                    _SettingsTile(
-                      icon: Icons.accessibility_new_outlined,
-                      title: 'Accessibility',
-                      subtitle: 'Supports system text size and screen readers',
-                      showDivider: false,
-                      onTap: () => _info(
-                        context,
-                        'Accessibility',
-                        'Smart Planner follows the device text scale, contrast, and screen-reader settings.',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 22),
+              SizedBox(height: compact ? 12 : 14),
               SectionLabel(
                 'Notifications',
                 color: Theme.of(context).colorScheme.secondary,
@@ -152,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 14),
               const SectionLabel('Privacy & security'),
               const SizedBox(height: 10),
               GlassPanel(
@@ -175,11 +139,14 @@ class SettingsScreen extends ConsumerWidget {
                         'A planner copy leaves the app only when you choose Save '
                         'Planner Copy or Share Planner Copy. Exported copies '
                         'are readable text reports and are not currently protected by '
-                        'a separate password, so keep them in a private place.',
+                        'a separate password, so keep them in a private place.\n\n'
+                        'Medicine-safety contacts also stay on this device. Call and '
+                        'Email buttons only open your phone or email app; nothing is '
+                        'called or sent unless you complete the action yourself.',
                   ),
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 14),
               const SectionLabel('Your data'),
               const SizedBox(height: 10),
               GlassPanel(
@@ -221,12 +188,12 @@ class SettingsScreen extends ConsumerWidget {
                     _SettingsTile(
                       icon: Icons.info_outline,
                       title: 'About Smart Planner',
-                      subtitle: 'Version 1.0.0',
+                      subtitle: 'Version 1.4.5',
                       showDivider: false,
                       onTap: () => _info(
                         context,
                         'About Smart Planner',
-                        'Offline-first reminder and task planner\nVersion 1.0.0',
+                        'Offline-first reminder and task planner\nVersion 1.4.5',
                       ),
                     ),
                   ],
@@ -239,10 +206,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  String _themeLabel(ThemeMode mode) => mode == ThemeMode.system
-      ? 'System default'
-      : mode.name[0].toUpperCase() + mode.name.substring(1);
-
   void _openPage(BuildContext context, Widget page) {
     final navigator = Navigator.of(context);
     if (compact) navigator.pop();
@@ -252,34 +215,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showThemePicker(BuildContext context, WidgetRef ref) =>
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (ctx) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final mode in ThemeMode.values)
-                ListTile(
-                  leading: Icon(
-                    mode == ThemeMode.light
-                        ? Icons.light_mode
-                        : mode == ThemeMode.dark
-                        ? Icons.dark_mode
-                        : Icons.settings_brightness,
-                  ),
-                  title: Text(_themeLabel(mode)),
-                  onTap: () async {
-                    await ref
-                        .read(appSettingsControllerProvider.notifier)
-                        .setTheme(mode);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  },
-                ),
-            ],
-          ),
-        ),
-      );
   Future<void> _pickDefaultTime(
     BuildContext context,
     WidgetRef ref,
@@ -501,15 +436,15 @@ class _SettingsTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
     super.key,
+    this.onTap,
     this.showDivider = true,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool showDivider;
 
   @override
@@ -522,10 +457,10 @@ class _SettingsTile extends StatelessWidget {
             : null,
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         leading: Container(
-          width: 42,
-          height: 42,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: theme.colorScheme.primary.withValues(alpha: .11),
@@ -534,7 +469,7 @@ class _SettingsTile extends StatelessWidget {
         ),
         title: Text(title),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: onTap == null ? null : const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );

@@ -19,6 +19,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   DateTime _focused = DateTime.now(), _selected = DateTime.now();
   CalendarFormat _format = CalendarFormat.month;
   bool _dayOnly = false;
+  bool _calendarExpanded = false;
   TaskPriority? _priorityFilter;
   String? _categoryFilter;
 
@@ -54,8 +55,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         .length;
     return ListView(
       padding: isCompact
-          ? const EdgeInsets.fromLTRB(16, 18, 16, 104)
-          : const EdgeInsets.fromLTRB(20, 26, 20, 112),
+          ? const EdgeInsets.fromLTRB(16, 12, 16, 92)
+          : const EdgeInsets.fromLTRB(16, 16, 16, 92),
       children: [
         Center(
           child: ConstrainedBox(
@@ -65,69 +66,86 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               children: [
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final heading = Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    final heading = Row(
                       children: [
-                        Text(
-                          'Calendar',
-                          style: isCompact
-                              ? Theme.of(context).textTheme.headlineMedium
-                              : Theme.of(context).textTheme.displaySmall,
+                        IconButton.filledTonal(
+                          key: const Key('open-calendar-picker'),
+                          tooltip: _calendarExpanded
+                              ? 'Hide calendar'
+                              : 'Show calendar',
+                          onPressed: () => setState(
+                            () => _calendarExpanded = !_calendarExpanded,
+                          ),
+                          icon: const Icon(Icons.calendar_month_rounded),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Long-press any date to add a reminder',
-                          softWrap: true,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$activeCategories active categories • $approaching deadlines approaching',
-                          style: Theme.of(context).textTheme.bodySmall,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Calendar',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              Text(
+                                '$activeCategories categories • $approaching deadlines soon',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     );
-                    final selector = SegmentedButton<int>(
-                      style: const ButtonStyle(
-                        visualDensity: VisualDensity.compact,
+                    final selector = Visibility(
+                      visible: _calendarExpanded,
+                      child: SegmentedButton<int>(
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        segments: const [
+                          ButtonSegment(value: 0, label: Text('Month')),
+                          ButtonSegment(value: 1, label: Text('Week')),
+                          ButtonSegment(value: 2, label: Text('Day')),
+                        ],
+                        selected: {
+                          _dayOnly
+                              ? 2
+                              : _format == CalendarFormat.week
+                              ? 1
+                              : 0,
+                        },
+                        onSelectionChanged: (v) => setState(() {
+                          _dayOnly = v.first == 2;
+                          _format = v.first == 1
+                              ? CalendarFormat.week
+                              : CalendarFormat.month;
+                        }),
                       ),
-                      segments: const [
-                        ButtonSegment(value: 0, label: Text('Month')),
-                        ButtonSegment(value: 1, label: Text('Week')),
-                        ButtonSegment(value: 2, label: Text('Day')),
-                      ],
-                      selected: {
-                        _dayOnly
-                            ? 2
-                            : _format == CalendarFormat.week
-                            ? 1
-                            : 0,
-                      },
-                      onSelectionChanged: (v) => setState(() {
-                        _dayOnly = v.first == 2;
-                        _format = v.first == 1
-                            ? CalendarFormat.week
-                            : CalendarFormat.month;
-                      }),
                     );
                     if (constraints.maxWidth < 610) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           heading,
-                          const SizedBox(height: 10),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: selector,
-                          ),
+                          if (_calendarExpanded) ...[
+                            const SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: selector,
+                            ),
+                          ],
                         ],
                       );
                     }
                     return Row(
                       children: [
                         Expanded(child: heading),
-                        const SizedBox(width: 18),
-                        selector,
+                        if (_calendarExpanded) ...[
+                          const SizedBox(width: 12),
+                          selector,
+                        ],
                       ],
                     );
                   },
@@ -155,10 +173,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ),
                   ],
                 ),
-                SizedBox(height: isCompact ? 12 : 16),
-                const SectionLabel('Monthly overview'),
-                SizedBox(height: isCompact ? 8 : 16),
-                if (!_dayOnly)
+                if (_calendarExpanded) ...[
+                  SizedBox(height: isCompact ? 10 : 14),
+                  SectionLabel(
+                    _dayOnly
+                        ? 'Day view'
+                        : _format == CalendarFormat.week
+                        ? 'Week view'
+                        : 'Month view',
+                  ),
+                  SizedBox(height: isCompact ? 6 : 10),
+                ],
+                if (_calendarExpanded && !_dayOnly)
                   GlassPanel(
                     padding: EdgeInsets.all(isCompact ? 10 : 20),
                     child: TableCalendar<PlannerTask>(
@@ -246,7 +272,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       ),
                     ),
                   ),
-                if (_dayOnly)
+                if (_calendarExpanded && _dayOnly)
                   GlassPanel(
                     padding: EdgeInsets.all(isCompact ? 10 : 20),
                     child: Row(

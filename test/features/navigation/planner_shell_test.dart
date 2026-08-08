@@ -15,7 +15,7 @@ void main() {
     expect(find.text('Dashboard'), findsWidgets);
     expect(find.byKey(const Key('dashboard-full-overview')), findsOneWidget);
     expect(find.text('Pinned tasks'), findsOneWidget);
-    expect(find.text("Today's timeline"), findsOneWidget);
+    expect(find.text("Today's timeline"), findsNothing);
 
     await tester.tap(find.byKey(const Key('dashboard-full-overview')));
     await tester.pumpAndSettle();
@@ -27,23 +27,37 @@ void main() {
 
     await tester.tap(find.byKey(const Key('nav-calendar')));
     await tester.pumpAndSettle();
-    expect(find.text('MONTHLY OVERVIEW'), findsOneWidget);
+    expect(find.text('Calendar'), findsWidgets);
+    expect(find.text('MONTH VIEW'), findsNothing);
     expect(find.byKey(const Key('calendar-filter')), findsOneWidget);
     expect(find.byKey(const Key('calendar-new-event')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('open-calendar-picker')));
+    await tester.pumpAndSettle();
+    expect(find.text('MONTH VIEW'), findsOneWidget);
+    expect(find.text('Month'), findsOneWidget);
+    expect(find.text('Week'), findsOneWidget);
+    expect(find.text('Day'), findsOneWidget);
+    await tester.tap(find.text('Week'));
+    await tester.pumpAndSettle();
+    expect(find.text('WEEK VIEW'), findsOneWidget);
+    await tester.tap(find.text('Day'));
+    await tester.pumpAndSettle();
+    expect(find.text('DAY VIEW'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('nav-tasks')));
     await tester.pumpAndSettle();
-    expect(find.text('Task Stream'), findsOneWidget);
+    expect(find.text('Tasks'), findsWidgets);
 
     expect(find.byKey(const Key('nav-settings')), findsNothing);
     await tester.tap(find.byKey(const Key('open-side-menu')));
     await tester.pumpAndSettle();
-    expect(find.text('Quick settings'), findsOneWidget);
-    expect(find.byKey(const Key('quick-theme-switch')), findsOneWidget);
+    expect(find.text('Menu'), findsOneWidget);
+    expect(find.text('Dark appearance'), findsNothing);
     await tester.tap(find.byKey(const Key('open-full-settings')));
     await tester.pumpAndSettle();
-    expect(find.text('Personalize your planner experience'), findsOneWidget);
-    expect(find.text('APPEARANCE'), findsOneWidget);
+    expect(find.text('Settings'), findsWidgets);
+    expect(find.text('APPEARANCE'), findsNothing);
+    expect(find.text('Accessibility'), findsNothing);
     expect(find.byKey(const Key('privacy-storage-setting')), findsOneWidget);
   });
 
@@ -127,7 +141,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a pinned task due today also appears in today timeline', (
+  testWidgets('a pinned task due today appears once without a timeline', (
     tester,
   ) async {
     final now = DateTime.now();
@@ -136,7 +150,7 @@ void main() {
       title: 'Pinned today reminder',
       description: '',
       priority: TaskPriority.high,
-      dueAt: now.add(const Duration(minutes: 30)),
+      dueAt: DateTime(now.year, now.month, now.day, 12),
       isPinned: true,
       repeatType: TaskRepeatType.never,
       repeatInterval: 1,
@@ -155,8 +169,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Pinned today reminder'), findsNWidgets(2));
-    expect(find.text('Your day is clear.'), findsNothing);
+    expect(find.text('Pinned today reminder'), findsOneWidget);
+    expect(find.text("Today's timeline"), findsNothing);
   });
 
   testWidgets('daily progress includes checklist completion units', (
@@ -168,7 +182,7 @@ void main() {
       title: 'Checklist weighted task',
       description: '',
       priority: TaskPriority.medium,
-      dueAt: now.add(const Duration(minutes: 30)),
+      dueAt: DateTime(now.year, now.month, now.day, 12),
       isPinned: false,
       completedAt: now,
       repeatType: TaskRepeatType.never,
@@ -237,6 +251,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // One completed task + two checked items out of five total daily units.
+    expect(find.byKey(const Key('stat-daily-progress')), findsOneWidget);
+    expect(find.text('60%'), findsWidgets);
     expect(
       find.descendant(
         of: find.byKey(const Key('stat-daily-progress')),

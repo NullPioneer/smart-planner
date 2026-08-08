@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_reminder/core/providers/app_providers.dart';
 import 'package:smart_reminder/core/theme/app_theme.dart';
@@ -30,6 +29,8 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   final _title = TextEditingController();
   final _description = TextEditingController();
   final _notes = TextEditingController();
+  final _emergencyContacts = List.generate(3, (_) => TextEditingController());
+  final _emergencyEmail = TextEditingController();
   final List<TextEditingController> _checklist = [];
   final List<_PendingAttachment> _pendingAttachments = [];
   late DateTime _date;
@@ -40,6 +41,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   DateTime? _repeatEnd;
   String? _categoryId;
   bool _pinned = false;
+  bool _alarmEnabled = false;
   bool _saving = false;
   bool _recording = false;
   (String path, int seconds)? _pendingVoice;
@@ -76,12 +78,17 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       _title.text = task.title;
       _description.text = task.description;
       _notes.text = task.notes;
+      for (var i = 0; i < task.emergencyContactNumbers.length && i < 3; i++) {
+        _emergencyContacts[i].text = task.emergencyContactNumbers[i];
+      }
+      _emergencyEmail.text = task.emergencyEmail;
       _priority = task.priority;
       _repeat = task.repeatType;
       _repeatInterval = task.repeatInterval;
       _repeatEnd = task.repeatEndDate;
       _categoryId = task.categoryId;
       _pinned = task.isPinned;
+      _alarmEnabled = task.alarmEnabled;
       _reminders
         ..clear()
         ..addAll(existing.reminders.map((r) => r.offsetMinutes));
@@ -92,6 +99,10 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     _title.addListener(_markChanged);
     _description.addListener(_markChanged);
     _notes.addListener(_markChanged);
+    for (final controller in _emergencyContacts) {
+      controller.addListener(_markChanged);
+    }
+    _emergencyEmail.addListener(_markChanged);
   }
 
   @override
@@ -99,6 +110,10 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     _title.dispose();
     _description.dispose();
     _notes.dispose();
+    for (final controller in _emergencyContacts) {
+      controller.dispose();
+    }
+    _emergencyEmail.dispose();
     for (final c in _checklist) {
       c.dispose();
     }
@@ -114,6 +129,23 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     controller.addListener(_markChanged);
     return controller;
   }
+
+  bool get _medicineSafetyEnabled =>
+      _priority == TaskPriority.high &&
+      (_categoryId == 'medicine' || isMedicineReminderTitle(_title.text));
+
+  List<String> get _effectiveEmergencyContacts => _medicineSafetyEnabled
+      ? _emergencyContacts
+            .map((controller) => controller.text.trim())
+            .where((number) => number.isNotEmpty)
+            .toList()
+      : const [];
+
+  String get _effectiveEmergencyEmail =>
+      _medicineSafetyEnabled ? _emergencyEmail.text.trim() : '';
+
+  bool get _effectiveAlarmEnabled =>
+      _priority == TaskPriority.high && _alarmEnabled;
 
   bool get _hasChanges {
     final existing = widget.existing;
@@ -140,10 +172,16 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     return _title.text.trim() != task.title ||
         _description.text.trim() != task.description ||
         _notes.text.trim() != task.notes ||
+        !_sameStrings(
+          _effectiveEmergencyContacts,
+          task.emergencyContactNumbers,
+        ) ||
+        _effectiveEmergencyEmail != task.emergencyEmail ||
         _categoryId != task.categoryId ||
         _priority != task.priority ||
         !_sameMinute(due, task.dueAt) ||
         _pinned != task.isPinned ||
+        _effectiveAlarmEnabled != task.alarmEnabled ||
         _repeat != task.repeatType ||
         _repeatInterval != task.repeatInterval ||
         !_sameNullableDate(_repeatEnd, task.repeatEndDate) ||
@@ -190,11 +228,11 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
             if (widget.existing == null) ...[
               _templates(categories),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
             ],
             _panel('Task details', Icons.edit_note, [
               TextFormField(
@@ -264,8 +302,29 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                 selected: {_priority},
                 onSelectionChanged: (v) => setState(() => _priority = v.first),
               ),
+              if (_priority == TaskPriority.high) ...[
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SwitchListTile(
+                    key: const Key('high-priority-alarm-switch'),
+                    secondary: const Icon(Icons.alarm_rounded),
+                    title: const Text('Alarm at due time'),
+                    subtitle: const Text(
+                      'Optional. Rings with Stop, Snooze, and Open Task actions.',
+                    ),
+                    value: _alarmEnabled,
+                    onChanged: (value) => setState(() => _alarmEnabled = value),
+                  ),
+                ),
+              ],
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             _panel('Schedule', Icons.event, [
               Row(
                 children: [
@@ -346,7 +405,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                 onChanged: (v) => setState(() => _pinned = v),
               ),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             _panel('Reminder timings', Icons.notifications_active_outlined, [
               Wrap(
                 spacing: 8,
@@ -378,7 +437,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                   ),
                 ),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             _panel('Checklist', Icons.checklist, [
               for (var i = 0; i < _checklist.length; i++)
                 Padding(
@@ -411,7 +470,54 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                 label: const Text('Add checklist item'),
               ),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
+            if (_medicineSafetyEnabled) ...[
+              _panel('Medicine safety', Icons.health_and_safety_outlined, [
+                const Text(
+                  'Add optional contacts for quick access. Smart Planner never calls or emails anyone automatically.',
+                ),
+                const SizedBox(height: 12),
+                for (var i = 0; i < _emergencyContacts.length; i++) ...[
+                  TextFormField(
+                    key: Key('emergency-contact-${i + 1}'),
+                    controller: _emergencyContacts[i],
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Emergency contact ${i + 1}',
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                    ),
+                  ),
+                  if (i < _emergencyContacts.length - 1)
+                    const SizedBox(height: 10),
+                ],
+                const SizedBox(height: 10),
+                TextFormField(
+                  key: const Key('emergency-email'),
+                  controller: _emergencyEmail,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Emergency email',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  validator: (value) {
+                    final email = value?.trim() ?? '';
+                    if (email.isNotEmpty &&
+                        !RegExp(
+                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                        ).hasMatch(email)) {
+                      return 'Enter a valid email address';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'In Notes, add only medicine, dosage, and prescription instructions verified with a healthcare professional. For an emergency, contact local emergency services.',
+                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                ),
+              ]),
+              const SizedBox(height: 10),
+            ],
             _panel('Attachments & voice', Icons.attach_file, [
               for (final item in _pendingAttachments)
                 ListTile(
@@ -448,7 +554,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                   OutlinedButton.icon(
                     onPressed: _pickImage,
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Gallery'),
+                    label: const Text('Gallery / document'),
                   ),
                   OutlinedButton.icon(
                     onPressed: _pickFile,
@@ -463,7 +569,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                 ],
               ),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             _panel('Notes', Icons.notes, [
               TextFormField(
                 controller: _notes,
@@ -475,7 +581,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                 ),
               ),
             ]),
-            const SizedBox(height: 22),
+            const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -605,7 +711,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                 Text(title, style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             ...children,
           ],
         ),
@@ -709,16 +815,22 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   }
 
   Future<void> _pickImage() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    final path = await ref
-        .read(localMediaServiceProvider)
-        .importFile(file.path);
-    setState(
-      () => _pendingAttachments.add(
-        _PendingAttachment(path, file.name, TaskAttachmentType.image),
-      ),
+    final attachments = await pickGalleryTaskAttachments(
+      context,
+      ref.read(localMediaServiceProvider),
     );
+    if (attachments.isEmpty || !mounted) return;
+    setState(() {
+      _pendingAttachments.addAll(
+        attachments.map(
+          (attachment) => _PendingAttachment(
+            attachment.path,
+            attachment.name,
+            attachment.type,
+          ),
+        ),
+      );
+    });
   }
 
   Future<void> _captureImages() async {
@@ -766,19 +878,21 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   Future<void> _toggleRecording() async {
     if (_recording) {
       final result = await ref.read(localMediaServiceProvider).stopRecording();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _recording = false;
           _pendingVoice = result;
         });
+      }
     } else {
       final ok = await ref.read(localMediaServiceProvider).startRecording();
       if (mounted) {
         setState(() => _recording = ok);
-        if (!ok)
+        if (!ok) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Microphone permission is required.')),
           );
+        }
       }
     }
   }
@@ -912,10 +1026,13 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
             _time.minute,
           ),
           isPinned: _pinned,
+          alarmEnabled: _effectiveAlarmEnabled,
           repeatType: _repeat,
           repeatInterval: _repeatInterval,
           repeatEndDate: _repeatEnd,
           notes: _notes.text,
+          emergencyContactNumbers: _effectiveEmergencyContacts,
+          emergencyEmail: _effectiveEmergencyEmail,
           checklist: [
             for (var i = 0; i < _checklist.length; i++)
               if (_checklist[i].text.trim().isNotEmpty)
@@ -940,12 +1057,13 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
           displayName: item.name,
         );
       }
-      if (_pendingVoice != null)
+      if (_pendingVoice != null) {
         await repo.addVoiceNote(
           taskId: id,
           path: _pendingVoice!.$1,
           durationSeconds: _pendingVoice!.$2,
         );
+      }
       await ref.read(taskNotificationCoordinatorProvider).syncTask(id);
       if (!mounted) return;
       ScaffoldMessenger.of(

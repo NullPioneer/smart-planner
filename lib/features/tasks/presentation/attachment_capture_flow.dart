@@ -55,6 +55,23 @@ Future<List<PreparedAttachment>> captureTaskAttachments(
   }
   if (pages.isEmpty || !context.mounted) return const [];
 
+  return _prepareImageAttachments(context, mediaService, pages);
+}
+
+Future<List<PreparedAttachment>> pickGalleryTaskAttachments(
+  BuildContext context,
+  LocalMediaService mediaService,
+) async {
+  final pages = await ImagePicker().pickMultiImage(imageQuality: 92);
+  if (pages.isEmpty || !context.mounted) return const [];
+  return _prepareImageAttachments(context, mediaService, pages);
+}
+
+Future<List<PreparedAttachment>> _prepareImageAttachments(
+  BuildContext context,
+  LocalMediaService mediaService,
+  List<XFile> pages,
+) async {
   final mode = await showModalBottomSheet<_CaptureSaveMode>(
     context: context,
     showDragHandle: true,

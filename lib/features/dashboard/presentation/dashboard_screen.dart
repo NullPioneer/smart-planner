@@ -72,7 +72,6 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isLight = theme.brightness == Brightness.light;
     final now = DateTime.now();
     final today = tasks.where((t) => t.isToday).toList()
       ..sort((a, b) => a.dueAt.compareTo(b.dueAt));
@@ -106,13 +105,9 @@ class _DashboardContent extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: isLight
-            ? theme.colorScheme.primary
-            : theme.colorScheme.secondaryContainer,
-        foregroundColor: isLight
-            ? theme.colorScheme.onPrimary
-            : theme.colorScheme.onSecondaryContainer,
-        elevation: isLight ? 8 : 5,
+        backgroundColor: theme.colorScheme.primaryContainer,
+        foregroundColor: theme.colorScheme.onPrimaryContainer,
+        elevation: 0,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute<void>(builder: (_) => const AddTaskScreen()),
@@ -121,7 +116,7 @@ class _DashboardContent extends StatelessWidget {
         label: const Text('Quick add'),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 26, 20, 112),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 92),
         children: [
           Center(
             child: ConstrainedBox(
@@ -149,75 +144,19 @@ class _DashboardContent extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  LayoutBuilder(
-                    builder: (_, c) {
-                      final compact = c.maxWidth < 760;
-                      final width = compact ? 156.0 : (c.maxWidth - 36) / 4;
-                      final cards = <Widget>[
-                        _Stat(
-                          key: const Key('stat-completed-today'),
-                          width: width,
-                          label: 'Completed today',
-                          value: '$completedToday',
-                          color: Theme.of(context).colorScheme.primary,
-                          icon: Icons.check_circle_outline,
-                          onTap: onCompletedToday,
-                          compact: compact,
-                        ),
-                        _Stat(
-                          key: const Key('stat-pending'),
-                          width: width,
-                          label: 'Pending',
-                          value: '$pending',
-                          color: Theme.of(context).colorScheme.secondary,
-                          icon: Icons.pending_actions,
-                          onTap: onPending,
-                          compact: compact,
-                        ),
-                        _Stat(
-                          key: const Key('stat-overdue'),
-                          width: width,
-                          label: 'Overdue',
-                          value: '$overdue',
-                          color: Theme.of(context).colorScheme.error,
-                          icon: Icons.warning_amber,
-                          onTap: onOverdue,
-                          compact: compact,
-                        ),
-                        _Stat(
-                          key: const Key('stat-daily-progress'),
-                          width: width,
-                          label: 'Daily progress',
-                          value: '${(progress * 100).round()}%',
-                          color: Theme.of(context).colorScheme.primary,
-                          icon: Icons.donut_small_rounded,
-                          onTap: openInsights,
-                          compact: compact,
-                        ),
-                      ];
-                      if (compact) {
-                        return SizedBox(
-                          height: 104,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: cards.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 10),
-                            itemBuilder: (_, index) => cards[index],
-                          ),
-                        );
-                      }
-                      return Wrap(spacing: 12, runSpacing: 12, children: cards);
-                    },
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
                   _DailyProductivityReport(
                     progress: progress,
                     completedUnits: completedUnits,
                     totalUnits: progressUnits,
+                    completedToday: completedToday,
+                    pending: pending,
+                    overdue: overdue,
                     rewards: rewards,
                     onTap: openInsights,
+                    onCompletedToday: onCompletedToday,
+                    onPending: onPending,
+                    onOverdue: onOverdue,
                   ),
                   const SizedBox(height: 14),
                   _TaskSection(
@@ -225,13 +164,6 @@ class _DashboardContent extends StatelessWidget {
                     icon: Icons.push_pin_rounded,
                     tasks: pinned,
                     empty: 'Pin important tasks to keep them here.',
-                  ),
-                  const SizedBox(height: 14),
-                  _TaskSection(
-                    title: "Today's timeline",
-                    icon: Icons.timeline,
-                    tasks: today.where((t) => !t.isCompleted).toList(),
-                    empty: 'Your day is clear.',
                   ),
                   const SizedBox(height: 14),
                   _TaskSection(
@@ -305,9 +237,7 @@ class _LiveGreetingState extends State<_LiveGreeting> {
       Text(
         DateFormat('EEEE, d MMMM y').format(_now),
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppColors.lightOnSurface
-              : Theme.of(context).colorScheme.onSurfaceVariant,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -340,7 +270,7 @@ class _DashboardOverviewScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Planner overview')),
       body: AtmosphericBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
             _Summary(tasks: tasks),
             const SizedBox(height: 14),
@@ -669,72 +599,32 @@ class _ProductivityScoreGraph extends StatelessWidget {
   );
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({
-    required this.width,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-    this.onTap,
-    this.compact = false,
-    super.key,
-  });
-  final double width;
-  final String label, value;
-  final Color color;
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool compact;
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: width,
-    child: GlassPanel(
-      onTap: onTap,
-      padding: EdgeInsets.all(compact ? 14 : 20),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: compact ? 21 : 24),
-          SizedBox(width: compact ? 8 : 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: compact
-                      ? Theme.of(context).textTheme.titleLarge
-                      : Theme.of(context).textTheme.headlineMedium,
-                ),
-                Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 class _DailyProductivityReport extends StatelessWidget {
   const _DailyProductivityReport({
     required this.progress,
     required this.completedUnits,
     required this.totalUnits,
+    required this.completedToday,
+    required this.pending,
+    required this.overdue,
     required this.rewards,
     required this.onTap,
+    this.onCompletedToday,
+    this.onPending,
+    this.onOverdue,
   });
 
   final double progress;
   final int completedUnits;
   final int totalUnits;
+  final int completedToday;
+  final int pending;
+  final int overdue;
   final ProductivityRewardSummary rewards;
   final VoidCallback onTap;
+  final VoidCallback? onCompletedToday;
+  final VoidCallback? onPending;
+  final VoidCallback? onOverdue;
 
   @override
   Widget build(BuildContext context) {
@@ -748,7 +638,6 @@ class _DailyProductivityReport extends StatelessWidget {
     };
     return GlassPanel(
       key: const Key('daily-productivity-report'),
-      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -765,18 +654,51 @@ class _DailyProductivityReport extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              Text(
-                'View insights',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.secondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded, size: 20),
+              TextButton(onPressed: onTap, child: const Text('View insights')),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _CompactReportMetric(
+                  key: const Key('stat-completed-today'),
+                  icon: Icons.check_circle_outline,
+                  value: '$completedToday',
+                  label: 'Completed',
+                  onTap: onCompletedToday,
+                ),
+              ),
+              Expanded(
+                child: _CompactReportMetric(
+                  key: const Key('stat-pending'),
+                  icon: Icons.pending_actions,
+                  value: '$pending',
+                  label: 'Pending',
+                  onTap: onPending,
+                ),
+              ),
+              Expanded(
+                child: _CompactReportMetric(
+                  key: const Key('stat-overdue'),
+                  icon: Icons.warning_amber,
+                  value: '$overdue',
+                  label: 'Overdue',
+                  onTap: onOverdue,
+                ),
+              ),
+              Expanded(
+                child: _CompactReportMetric(
+                  key: const Key('stat-daily-progress'),
+                  icon: Icons.donut_small_rounded,
+                  value: '$percent%',
+                  label: 'Progress',
+                  onTap: onTap,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
           Row(
             children: [
               SizedBox.square(
@@ -845,6 +767,49 @@ class _DailyProductivityReport extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CompactReportMetric extends StatelessWidget {
+  const _CompactReportMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+    this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(10),
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ReportChip extends StatelessWidget {

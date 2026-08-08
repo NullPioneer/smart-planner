@@ -48,6 +48,29 @@ void main() {
 
     expect(channelIds, hasLength(NotificationSoundCatalog.values.length));
   });
+
+  test('high-priority alarm uses the device alarm tone until stopped', () {
+    final details = service.alarmDetailsFor();
+
+    expect(details.channelId, 'smart_planner_high_priority_device_alarm_v2');
+    expect(details.sound, isA<UriAndroidNotificationSound>());
+    expect(details.sound?.sound, 'content://settings/system/alarm_alert');
+    expect(details.importance, Importance.max);
+    expect(details.priority, Priority.max);
+    expect(details.audioAttributesUsage, AudioAttributesUsage.alarm);
+    expect(details.category, AndroidNotificationCategory.alarm);
+    expect(details.ongoing, isTrue);
+    expect(details.autoCancel, isFalse);
+    expect(details.additionalFlags, contains(4));
+    expect(
+      details.actions?.map((action) => action.id),
+      containsAll([
+        LocalNotificationService.stopAlarmAction,
+        LocalNotificationService.snoozeAction,
+        LocalNotificationService.openAction,
+      ]),
+    );
+  });
 }
 
 final class _Repository implements NotificationSettingsRepository {

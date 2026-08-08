@@ -512,6 +512,21 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _alarmEnabledMeta = const VerificationMeta(
+    'alarmEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> alarmEnabled = GeneratedColumn<bool>(
+    'alarm_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("alarm_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -569,6 +584,57 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _emergencyContact1Meta = const VerificationMeta(
+    'emergencyContact1',
+  );
+  @override
+  late final GeneratedColumn<String> emergencyContact1 =
+      GeneratedColumn<String>(
+        'emergency_contact1',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _emergencyContact2Meta = const VerificationMeta(
+    'emergencyContact2',
+  );
+  @override
+  late final GeneratedColumn<String> emergencyContact2 =
+      GeneratedColumn<String>(
+        'emergency_contact2',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _emergencyContact3Meta = const VerificationMeta(
+    'emergencyContact3',
+  );
+  @override
+  late final GeneratedColumn<String> emergencyContact3 =
+      GeneratedColumn<String>(
+        'emergency_contact3',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _emergencyEmailMeta = const VerificationMeta(
+    'emergencyEmail',
+  );
+  @override
+  late final GeneratedColumn<String> emergencyEmail = GeneratedColumn<String>(
+    'emergency_email',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -611,11 +677,16 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     priority,
     dueAt,
     isPinned,
+    alarmEnabled,
     completedAt,
     repeatType,
     repeatInterval,
     repeatEndDate,
     notes,
+    emergencyContact1,
+    emergencyContact2,
+    emergencyContact3,
+    emergencyEmail,
     createdAt,
     updatedAt,
     deletedAt,
@@ -680,6 +751,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         isPinned.isAcceptableOrUnknown(data['is_pinned']!, _isPinnedMeta),
       );
     }
+    if (data.containsKey('alarm_enabled')) {
+      context.handle(
+        _alarmEnabledMeta,
+        alarmEnabled.isAcceptableOrUnknown(
+          data['alarm_enabled']!,
+          _alarmEnabledMeta,
+        ),
+      );
+    }
     if (data.containsKey('completed_at')) {
       context.handle(
         _completedAtMeta,
@@ -717,6 +797,42 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
       context.handle(
         _notesMeta,
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('emergency_contact1')) {
+      context.handle(
+        _emergencyContact1Meta,
+        emergencyContact1.isAcceptableOrUnknown(
+          data['emergency_contact1']!,
+          _emergencyContact1Meta,
+        ),
+      );
+    }
+    if (data.containsKey('emergency_contact2')) {
+      context.handle(
+        _emergencyContact2Meta,
+        emergencyContact2.isAcceptableOrUnknown(
+          data['emergency_contact2']!,
+          _emergencyContact2Meta,
+        ),
+      );
+    }
+    if (data.containsKey('emergency_contact3')) {
+      context.handle(
+        _emergencyContact3Meta,
+        emergencyContact3.isAcceptableOrUnknown(
+          data['emergency_contact3']!,
+          _emergencyContact3Meta,
+        ),
+      );
+    }
+    if (data.containsKey('emergency_email')) {
+      context.handle(
+        _emergencyEmailMeta,
+        emergencyEmail.isAcceptableOrUnknown(
+          data['emergency_email']!,
+          _emergencyEmailMeta,
+        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -778,6 +894,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_pinned'],
       )!,
+      alarmEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}alarm_enabled'],
+      )!,
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
@@ -797,6 +917,22 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
+      )!,
+      emergencyContact1: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emergency_contact1'],
+      )!,
+      emergencyContact2: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emergency_contact2'],
+      )!,
+      emergencyContact3: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emergency_contact3'],
+      )!,
+      emergencyEmail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emergency_email'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -827,11 +963,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
   final String priority;
   final DateTime dueAt;
   final bool isPinned;
+  final bool alarmEnabled;
   final DateTime? completedAt;
   final String repeatType;
   final int repeatInterval;
   final DateTime? repeatEndDate;
   final String notes;
+  final String emergencyContact1;
+  final String emergencyContact2;
+  final String emergencyContact3;
+  final String emergencyEmail;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -843,11 +984,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     required this.priority,
     required this.dueAt,
     required this.isPinned,
+    required this.alarmEnabled,
     this.completedAt,
     required this.repeatType,
     required this.repeatInterval,
     this.repeatEndDate,
     required this.notes,
+    required this.emergencyContact1,
+    required this.emergencyContact2,
+    required this.emergencyContact3,
+    required this.emergencyEmail,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -864,6 +1010,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     map['priority'] = Variable<String>(priority);
     map['due_at'] = Variable<DateTime>(dueAt);
     map['is_pinned'] = Variable<bool>(isPinned);
+    map['alarm_enabled'] = Variable<bool>(alarmEnabled);
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
     }
@@ -873,6 +1020,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       map['repeat_end_date'] = Variable<DateTime>(repeatEndDate);
     }
     map['notes'] = Variable<String>(notes);
+    map['emergency_contact1'] = Variable<String>(emergencyContact1);
+    map['emergency_contact2'] = Variable<String>(emergencyContact2);
+    map['emergency_contact3'] = Variable<String>(emergencyContact3);
+    map['emergency_email'] = Variable<String>(emergencyEmail);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -892,6 +1043,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       priority: Value(priority),
       dueAt: Value(dueAt),
       isPinned: Value(isPinned),
+      alarmEnabled: Value(alarmEnabled),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
@@ -901,6 +1053,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ? const Value.absent()
           : Value(repeatEndDate),
       notes: Value(notes),
+      emergencyContact1: Value(emergencyContact1),
+      emergencyContact2: Value(emergencyContact2),
+      emergencyContact3: Value(emergencyContact3),
+      emergencyEmail: Value(emergencyEmail),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -922,11 +1078,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       priority: serializer.fromJson<String>(json['priority']),
       dueAt: serializer.fromJson<DateTime>(json['dueAt']),
       isPinned: serializer.fromJson<bool>(json['isPinned']),
+      alarmEnabled: serializer.fromJson<bool>(json['alarmEnabled']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       repeatType: serializer.fromJson<String>(json['repeatType']),
       repeatInterval: serializer.fromJson<int>(json['repeatInterval']),
       repeatEndDate: serializer.fromJson<DateTime?>(json['repeatEndDate']),
       notes: serializer.fromJson<String>(json['notes']),
+      emergencyContact1: serializer.fromJson<String>(json['emergencyContact1']),
+      emergencyContact2: serializer.fromJson<String>(json['emergencyContact2']),
+      emergencyContact3: serializer.fromJson<String>(json['emergencyContact3']),
+      emergencyEmail: serializer.fromJson<String>(json['emergencyEmail']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -943,11 +1104,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       'priority': serializer.toJson<String>(priority),
       'dueAt': serializer.toJson<DateTime>(dueAt),
       'isPinned': serializer.toJson<bool>(isPinned),
+      'alarmEnabled': serializer.toJson<bool>(alarmEnabled),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'repeatType': serializer.toJson<String>(repeatType),
       'repeatInterval': serializer.toJson<int>(repeatInterval),
       'repeatEndDate': serializer.toJson<DateTime?>(repeatEndDate),
       'notes': serializer.toJson<String>(notes),
+      'emergencyContact1': serializer.toJson<String>(emergencyContact1),
+      'emergencyContact2': serializer.toJson<String>(emergencyContact2),
+      'emergencyContact3': serializer.toJson<String>(emergencyContact3),
+      'emergencyEmail': serializer.toJson<String>(emergencyEmail),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -962,11 +1128,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     String? priority,
     DateTime? dueAt,
     bool? isPinned,
+    bool? alarmEnabled,
     Value<DateTime?> completedAt = const Value.absent(),
     String? repeatType,
     int? repeatInterval,
     Value<DateTime?> repeatEndDate = const Value.absent(),
     String? notes,
+    String? emergencyContact1,
+    String? emergencyContact2,
+    String? emergencyContact3,
+    String? emergencyEmail,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -978,6 +1149,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     priority: priority ?? this.priority,
     dueAt: dueAt ?? this.dueAt,
     isPinned: isPinned ?? this.isPinned,
+    alarmEnabled: alarmEnabled ?? this.alarmEnabled,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     repeatType: repeatType ?? this.repeatType,
     repeatInterval: repeatInterval ?? this.repeatInterval,
@@ -985,6 +1157,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
         ? repeatEndDate.value
         : this.repeatEndDate,
     notes: notes ?? this.notes,
+    emergencyContact1: emergencyContact1 ?? this.emergencyContact1,
+    emergencyContact2: emergencyContact2 ?? this.emergencyContact2,
+    emergencyContact3: emergencyContact3 ?? this.emergencyContact3,
+    emergencyEmail: emergencyEmail ?? this.emergencyEmail,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1002,6 +1178,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       priority: data.priority.present ? data.priority.value : this.priority,
       dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
       isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
+      alarmEnabled: data.alarmEnabled.present
+          ? data.alarmEnabled.value
+          : this.alarmEnabled,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
@@ -1015,6 +1194,18 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ? data.repeatEndDate.value
           : this.repeatEndDate,
       notes: data.notes.present ? data.notes.value : this.notes,
+      emergencyContact1: data.emergencyContact1.present
+          ? data.emergencyContact1.value
+          : this.emergencyContact1,
+      emergencyContact2: data.emergencyContact2.present
+          ? data.emergencyContact2.value
+          : this.emergencyContact2,
+      emergencyContact3: data.emergencyContact3.present
+          ? data.emergencyContact3.value
+          : this.emergencyContact3,
+      emergencyEmail: data.emergencyEmail.present
+          ? data.emergencyEmail.value
+          : this.emergencyEmail,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1031,11 +1222,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ..write('priority: $priority, ')
           ..write('dueAt: $dueAt, ')
           ..write('isPinned: $isPinned, ')
+          ..write('alarmEnabled: $alarmEnabled, ')
           ..write('completedAt: $completedAt, ')
           ..write('repeatType: $repeatType, ')
           ..write('repeatInterval: $repeatInterval, ')
           ..write('repeatEndDate: $repeatEndDate, ')
           ..write('notes: $notes, ')
+          ..write('emergencyContact1: $emergencyContact1, ')
+          ..write('emergencyContact2: $emergencyContact2, ')
+          ..write('emergencyContact3: $emergencyContact3, ')
+          ..write('emergencyEmail: $emergencyEmail, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
@@ -1052,11 +1248,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     priority,
     dueAt,
     isPinned,
+    alarmEnabled,
     completedAt,
     repeatType,
     repeatInterval,
     repeatEndDate,
     notes,
+    emergencyContact1,
+    emergencyContact2,
+    emergencyContact3,
+    emergencyEmail,
     createdAt,
     updatedAt,
     deletedAt,
@@ -1072,11 +1273,16 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           other.priority == this.priority &&
           other.dueAt == this.dueAt &&
           other.isPinned == this.isPinned &&
+          other.alarmEnabled == this.alarmEnabled &&
           other.completedAt == this.completedAt &&
           other.repeatType == this.repeatType &&
           other.repeatInterval == this.repeatInterval &&
           other.repeatEndDate == this.repeatEndDate &&
           other.notes == this.notes &&
+          other.emergencyContact1 == this.emergencyContact1 &&
+          other.emergencyContact2 == this.emergencyContact2 &&
+          other.emergencyContact3 == this.emergencyContact3 &&
+          other.emergencyEmail == this.emergencyEmail &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
@@ -1090,11 +1296,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
   final Value<String> priority;
   final Value<DateTime> dueAt;
   final Value<bool> isPinned;
+  final Value<bool> alarmEnabled;
   final Value<DateTime?> completedAt;
   final Value<String> repeatType;
   final Value<int> repeatInterval;
   final Value<DateTime?> repeatEndDate;
   final Value<String> notes;
+  final Value<String> emergencyContact1;
+  final Value<String> emergencyContact2;
+  final Value<String> emergencyContact3;
+  final Value<String> emergencyEmail;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -1107,11 +1318,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.priority = const Value.absent(),
     this.dueAt = const Value.absent(),
     this.isPinned = const Value.absent(),
+    this.alarmEnabled = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.repeatType = const Value.absent(),
     this.repeatInterval = const Value.absent(),
     this.repeatEndDate = const Value.absent(),
     this.notes = const Value.absent(),
+    this.emergencyContact1 = const Value.absent(),
+    this.emergencyContact2 = const Value.absent(),
+    this.emergencyContact3 = const Value.absent(),
+    this.emergencyEmail = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1125,11 +1341,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.priority = const Value.absent(),
     required DateTime dueAt,
     this.isPinned = const Value.absent(),
+    this.alarmEnabled = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.repeatType = const Value.absent(),
     this.repeatInterval = const Value.absent(),
     this.repeatEndDate = const Value.absent(),
     this.notes = const Value.absent(),
+    this.emergencyContact1 = const Value.absent(),
+    this.emergencyContact2 = const Value.absent(),
+    this.emergencyContact3 = const Value.absent(),
+    this.emergencyEmail = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -1147,11 +1368,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Expression<String>? priority,
     Expression<DateTime>? dueAt,
     Expression<bool>? isPinned,
+    Expression<bool>? alarmEnabled,
     Expression<DateTime>? completedAt,
     Expression<String>? repeatType,
     Expression<int>? repeatInterval,
     Expression<DateTime>? repeatEndDate,
     Expression<String>? notes,
+    Expression<String>? emergencyContact1,
+    Expression<String>? emergencyContact2,
+    Expression<String>? emergencyContact3,
+    Expression<String>? emergencyEmail,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -1165,11 +1391,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       if (priority != null) 'priority': priority,
       if (dueAt != null) 'due_at': dueAt,
       if (isPinned != null) 'is_pinned': isPinned,
+      if (alarmEnabled != null) 'alarm_enabled': alarmEnabled,
       if (completedAt != null) 'completed_at': completedAt,
       if (repeatType != null) 'repeat_type': repeatType,
       if (repeatInterval != null) 'repeat_interval': repeatInterval,
       if (repeatEndDate != null) 'repeat_end_date': repeatEndDate,
       if (notes != null) 'notes': notes,
+      if (emergencyContact1 != null) 'emergency_contact1': emergencyContact1,
+      if (emergencyContact2 != null) 'emergency_contact2': emergencyContact2,
+      if (emergencyContact3 != null) 'emergency_contact3': emergencyContact3,
+      if (emergencyEmail != null) 'emergency_email': emergencyEmail,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1185,11 +1416,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Value<String>? priority,
     Value<DateTime>? dueAt,
     Value<bool>? isPinned,
+    Value<bool>? alarmEnabled,
     Value<DateTime?>? completedAt,
     Value<String>? repeatType,
     Value<int>? repeatInterval,
     Value<DateTime?>? repeatEndDate,
     Value<String>? notes,
+    Value<String>? emergencyContact1,
+    Value<String>? emergencyContact2,
+    Value<String>? emergencyContact3,
+    Value<String>? emergencyEmail,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -1203,11 +1439,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       priority: priority ?? this.priority,
       dueAt: dueAt ?? this.dueAt,
       isPinned: isPinned ?? this.isPinned,
+      alarmEnabled: alarmEnabled ?? this.alarmEnabled,
       completedAt: completedAt ?? this.completedAt,
       repeatType: repeatType ?? this.repeatType,
       repeatInterval: repeatInterval ?? this.repeatInterval,
       repeatEndDate: repeatEndDate ?? this.repeatEndDate,
       notes: notes ?? this.notes,
+      emergencyContact1: emergencyContact1 ?? this.emergencyContact1,
+      emergencyContact2: emergencyContact2 ?? this.emergencyContact2,
+      emergencyContact3: emergencyContact3 ?? this.emergencyContact3,
+      emergencyEmail: emergencyEmail ?? this.emergencyEmail,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1239,6 +1480,9 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     if (isPinned.present) {
       map['is_pinned'] = Variable<bool>(isPinned.value);
     }
+    if (alarmEnabled.present) {
+      map['alarm_enabled'] = Variable<bool>(alarmEnabled.value);
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
@@ -1253,6 +1497,18 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
+    }
+    if (emergencyContact1.present) {
+      map['emergency_contact1'] = Variable<String>(emergencyContact1.value);
+    }
+    if (emergencyContact2.present) {
+      map['emergency_contact2'] = Variable<String>(emergencyContact2.value);
+    }
+    if (emergencyContact3.present) {
+      map['emergency_contact3'] = Variable<String>(emergencyContact3.value);
+    }
+    if (emergencyEmail.present) {
+      map['emergency_email'] = Variable<String>(emergencyEmail.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1279,11 +1535,16 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
           ..write('priority: $priority, ')
           ..write('dueAt: $dueAt, ')
           ..write('isPinned: $isPinned, ')
+          ..write('alarmEnabled: $alarmEnabled, ')
           ..write('completedAt: $completedAt, ')
           ..write('repeatType: $repeatType, ')
           ..write('repeatInterval: $repeatInterval, ')
           ..write('repeatEndDate: $repeatEndDate, ')
           ..write('notes: $notes, ')
+          ..write('emergencyContact1: $emergencyContact1, ')
+          ..write('emergencyContact2: $emergencyContact2, ')
+          ..write('emergencyContact3: $emergencyContact3, ')
+          ..write('emergencyEmail: $emergencyEmail, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3941,11 +4202,16 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String> priority,
       required DateTime dueAt,
       Value<bool> isPinned,
+      Value<bool> alarmEnabled,
       Value<DateTime?> completedAt,
       Value<String> repeatType,
       Value<int> repeatInterval,
       Value<DateTime?> repeatEndDate,
       Value<String> notes,
+      Value<String> emergencyContact1,
+      Value<String> emergencyContact2,
+      Value<String> emergencyContact3,
+      Value<String> emergencyEmail,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
@@ -3960,11 +4226,16 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String> priority,
       Value<DateTime> dueAt,
       Value<bool> isPinned,
+      Value<bool> alarmEnabled,
       Value<DateTime?> completedAt,
       Value<String> repeatType,
       Value<int> repeatInterval,
       Value<DateTime?> repeatEndDate,
       Value<String> notes,
+      Value<String> emergencyContact1,
+      Value<String> emergencyContact2,
+      Value<String> emergencyContact3,
+      Value<String> emergencyEmail,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -4109,6 +4380,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get alarmEnabled => $composableBuilder(
+    column: $table.alarmEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnFilters(column),
@@ -4131,6 +4407,26 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emergencyContact1 => $composableBuilder(
+    column: $table.emergencyContact1,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emergencyContact2 => $composableBuilder(
+    column: $table.emergencyContact2,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emergencyContact3 => $composableBuilder(
+    column: $table.emergencyContact3,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emergencyEmail => $composableBuilder(
+    column: $table.emergencyEmail,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4312,6 +4608,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get alarmEnabled => $composableBuilder(
+    column: $table.alarmEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnOrderings(column),
@@ -4334,6 +4635,26 @@ class $$TasksTableOrderingComposer
 
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emergencyContact1 => $composableBuilder(
+    column: $table.emergencyContact1,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emergencyContact2 => $composableBuilder(
+    column: $table.emergencyContact2,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emergencyContact3 => $composableBuilder(
+    column: $table.emergencyContact3,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emergencyEmail => $composableBuilder(
+    column: $table.emergencyEmail,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4405,6 +4726,11 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<bool> get isPinned =>
       $composableBuilder(column: $table.isPinned, builder: (column) => column);
 
+  GeneratedColumn<bool> get alarmEnabled => $composableBuilder(
+    column: $table.alarmEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => column,
@@ -4427,6 +4753,26 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get emergencyContact1 => $composableBuilder(
+    column: $table.emergencyContact1,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emergencyContact2 => $composableBuilder(
+    column: $table.emergencyContact2,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emergencyContact3 => $composableBuilder(
+    column: $table.emergencyContact3,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emergencyEmail => $composableBuilder(
+    column: $table.emergencyEmail,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4603,11 +4949,16 @@ class $$TasksTableTableManager
                 Value<String> priority = const Value.absent(),
                 Value<DateTime> dueAt = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
+                Value<bool> alarmEnabled = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<String> repeatType = const Value.absent(),
                 Value<int> repeatInterval = const Value.absent(),
                 Value<DateTime?> repeatEndDate = const Value.absent(),
                 Value<String> notes = const Value.absent(),
+                Value<String> emergencyContact1 = const Value.absent(),
+                Value<String> emergencyContact2 = const Value.absent(),
+                Value<String> emergencyContact3 = const Value.absent(),
+                Value<String> emergencyEmail = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4620,11 +4971,16 @@ class $$TasksTableTableManager
                 priority: priority,
                 dueAt: dueAt,
                 isPinned: isPinned,
+                alarmEnabled: alarmEnabled,
                 completedAt: completedAt,
                 repeatType: repeatType,
                 repeatInterval: repeatInterval,
                 repeatEndDate: repeatEndDate,
                 notes: notes,
+                emergencyContact1: emergencyContact1,
+                emergencyContact2: emergencyContact2,
+                emergencyContact3: emergencyContact3,
+                emergencyEmail: emergencyEmail,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4639,11 +4995,16 @@ class $$TasksTableTableManager
                 Value<String> priority = const Value.absent(),
                 required DateTime dueAt,
                 Value<bool> isPinned = const Value.absent(),
+                Value<bool> alarmEnabled = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<String> repeatType = const Value.absent(),
                 Value<int> repeatInterval = const Value.absent(),
                 Value<DateTime?> repeatEndDate = const Value.absent(),
                 Value<String> notes = const Value.absent(),
+                Value<String> emergencyContact1 = const Value.absent(),
+                Value<String> emergencyContact2 = const Value.absent(),
+                Value<String> emergencyContact3 = const Value.absent(),
+                Value<String> emergencyEmail = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4656,11 +5017,16 @@ class $$TasksTableTableManager
                 priority: priority,
                 dueAt: dueAt,
                 isPinned: isPinned,
+                alarmEnabled: alarmEnabled,
                 completedAt: completedAt,
                 repeatType: repeatType,
                 repeatInterval: repeatInterval,
                 repeatEndDate: repeatEndDate,
                 notes: notes,
+                emergencyContact1: emergencyContact1,
+                emergencyContact2: emergencyContact2,
+                emergencyContact3: emergencyContact3,
+                emergencyEmail: emergencyEmail,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

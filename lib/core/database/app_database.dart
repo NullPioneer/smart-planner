@@ -12,11 +12,16 @@ class Tasks extends Table {
   TextColumn get priority => text().withDefault(const Constant('medium'))();
   DateTimeColumn get dueAt => dateTime()();
   BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
+  BoolColumn get alarmEnabled => boolean().withDefault(const Constant(false))();
   DateTimeColumn get completedAt => dateTime().nullable()();
   TextColumn get repeatType => text().withDefault(const Constant('never'))();
   IntColumn get repeatInterval => integer().withDefault(const Constant(1))();
   DateTimeColumn get repeatEndDate => dateTime().nullable()();
   TextColumn get notes => text().withDefault(const Constant(''))();
+  TextColumn get emergencyContact1 => text().withDefault(const Constant(''))();
+  TextColumn get emergencyContact2 => text().withDefault(const Constant(''))();
+  TextColumn get emergencyContact3 => text().withDefault(const Constant(''))();
+  TextColumn get emergencyEmail => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -132,13 +137,24 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'smart_planner'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) async {
       await migrator.createAll();
       await _seedDefaultCategories();
+    },
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(tasks, tasks.emergencyContact1);
+        await migrator.addColumn(tasks, tasks.emergencyContact2);
+        await migrator.addColumn(tasks, tasks.emergencyContact3);
+        await migrator.addColumn(tasks, tasks.emergencyEmail);
+      }
+      if (from < 3) {
+        await migrator.addColumn(tasks, tasks.alarmEnabled);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

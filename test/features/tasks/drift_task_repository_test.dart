@@ -21,6 +21,7 @@ void main() {
         description: 'Final copy',
         categoryId: 'work',
         priority: TaskPriority.high,
+        alarmEnabled: true,
         dueAt: due,
         checklist: const [
           ChecklistDraft(title: 'Proofread'),
@@ -31,6 +32,7 @@ void main() {
     );
     final details = await repository.getTaskDetails(id);
     expect(details?.task.title, 'Submit report');
+    expect(details?.task.alarmEnabled, isTrue);
     expect(details?.checklist, hasLength(2));
     final initialProgress = await repository.watchChecklistProgress().first;
     expect(initialProgress[id]?.total, 2);
@@ -90,5 +92,33 @@ void main() {
 
     expect(tasks.first.title, 'Pinned task');
     expect(tasks.first.isPinned, isTrue);
+  });
+
+  test('medicine safety contacts are stored locally with the task', () async {
+    final id = await repository.saveTask(
+      TaskDraft(
+        title: 'Medicine dose',
+        categoryId: 'medicine',
+        priority: TaskPriority.high,
+        dueAt: DateTime.now().add(const Duration(hours: 2)),
+        notes: 'Prescribed tablet: follow the clinician instructions.',
+        emergencyContactNumbers: const [
+          '1111111111',
+          '2222222222',
+          '3333333333',
+        ],
+        emergencyEmail: 'trusted@example.com',
+      ),
+    );
+
+    final saved = (await repository.getTaskDetails(id))!.task;
+    expect(saved.isMedicineSafetyReminder, isTrue);
+    expect(saved.alarmEnabled, isFalse);
+    expect(saved.emergencyContactNumbers, [
+      '1111111111',
+      '2222222222',
+      '3333333333',
+    ]);
+    expect(saved.emergencyEmail, 'trusted@example.com');
   });
 }
